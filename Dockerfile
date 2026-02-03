@@ -19,6 +19,9 @@ COPY . .
 # Environment variables must be present at build time
 ENV NEXT_TELEMETRY_DISABLED 1
 
+# Generate Prisma Client
+RUN npx prisma generate
+
 RUN npm run build
 
 # Production image, copy all the files and run next

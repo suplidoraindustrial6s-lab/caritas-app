@@ -3,6 +3,8 @@ import { getBeneficiaryById } from '@/app/actions/beneficiaries';
 import BeneficiaryForm from '../components/BeneficiaryForm';
 import { notFound } from 'next/navigation';
 
+export const dynamic = 'force-dynamic';
+
 export default async function EditBeneficiaryPage({ params }: { params: Promise<{ id: string }> }) {
     const { id: idString } = await params;
     const id = parseInt(idString);
