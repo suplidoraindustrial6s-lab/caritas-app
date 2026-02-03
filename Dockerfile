@@ -52,6 +52,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 # Provide read/write access to the database directory
 RUN chmod -R 777 ./prisma
 
+# Install Prisma CLI for migrations
+RUN npm install -g prisma@5.10.2
+
 USER nextjs
 
 EXPOSE 3000
