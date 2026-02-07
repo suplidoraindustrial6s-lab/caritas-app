@@ -28,7 +28,7 @@ export async function uploadBeneficiaryPhoto(formData: FormData) {
 
         return {
             success: true,
-            url: `/uploads/beneficiaries/${filename}`
+            url: `/api/images/beneficiaries/${filename}`
         }
     } catch (error) {
         console.error('Error uploading file:', error)
