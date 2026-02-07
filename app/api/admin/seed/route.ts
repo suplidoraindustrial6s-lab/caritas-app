@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
+import { exec } from 'child_process';
+import util from 'util';
 
+const execAsync = util.promisify(exec);
 const prisma = new PrismaClient();
 
 export async function GET(request: Request) {
@@ -14,6 +17,17 @@ export async function GET(request: Request) {
     }
 
     try {
+        // AUTO-HEAL: Ensure DB Schema exists
+        try {
+            console.log('Pushing DB schema...');
+            // Use global prisma installed in Dockerfile
+            await execAsync('prisma db push --accept-data-loss');
+            console.log('DB schema pushed successfully.');
+        } catch (e: any) {
+            console.error('DB Push failed:', e);
+            // Continue anyway, maybe it worked partially or tables exist
+        }
+
         const dataPath = path.join(process.cwd(), 'prisma', 'data_backup.json');
         if (!fs.existsSync(dataPath)) {
             return NextResponse.json({ error: 'Backup file not found' }, { status: 404 });

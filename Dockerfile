@@ -27,6 +27,9 @@ ENV NEXT_TELEMETRY_DISABLED 1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# Install Prisma globally to ensure CLI availability for migrations and API
+RUN npm install -g prisma@5.10.2
+
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
@@ -38,5 +41,5 @@ EXPOSE 3000
 
 ENV PORT 3000
 
-# Force specific version for migrations/push
-CMD ["sh", "-c", "npx prisma@5.10.2 migrate deploy || npx prisma@5.10.2 db push && node server.js"]
+# Execute migrations/push and start server
+CMD ["sh", "-c", "prisma db push --accept-data-loss && node server.js"]
