@@ -21,7 +21,7 @@ export async function GET(request: Request) {
         try {
             console.log('Pushing DB schema...');
             // Use global prisma installed in Dockerfile
-            await execAsync('prisma db push --accept-data-loss');
+            await execAsync('prisma db push --accept-data-loss --skip-generate');
             console.log('DB schema pushed successfully.');
         } catch (e: any) {
             console.error('DB Push failed:', e);

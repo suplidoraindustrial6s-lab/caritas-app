@@ -42,4 +42,4 @@ EXPOSE 3000
 ENV PORT 3000
 
 # Execute migrations/push and start server
-CMD ["sh", "-c", "prisma db push --accept-data-loss && node server.js"]
+CMD ["sh", "-c", "prisma db push --accept-data-loss --skip-generate && node server.js"]
