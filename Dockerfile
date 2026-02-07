@@ -30,7 +30,7 @@ RUN adduser --system --uid 1001 nextjs
 # Install Prisma globally to ensure CLI availability for migrations and API
 RUN npm install -g prisma@5.10.2
 
-COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
