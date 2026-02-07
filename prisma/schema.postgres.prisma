@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Grupos de atenciÃ³n (Ej. Fe, Esperanza, Caridad, Amor, Lista de Espera)
+model Group {
+  id          Int           @id @default(autoincrement())
+  name        String        @unique // Nombre corto creativo
+  description String?
+  beneficiaries Beneficiary[]
+  serviceDays   ServiceDay[] // Relacin inversa
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+// Beneficiarios
+model Beneficiary {
+  id              Int           @id @default(autoincrement())
+  fullName        String
+  nationalId      String        @unique // CÃ©dula de Identidad
+  phoneNumber     String?       // Telefono de contacto
+  birthDate       DateTime
+  placeOfBirth    String
+  gender          String        // M/F
+  address         String
+  zone            String?       // Zona de residencia (Ej. El LimÃ³n, CaÃ±a de AzÃºcar)
+  photoUrl        String?       // URL de la foto carnet
+  chronicIllness  String?       // "None" or description
+  hasChildren     Boolean       @default(false)
+  
+  // Relaciones
+  groupId         Int?
+  group           Group?        @relation(fields: [groupId], references: [id])
+  children        Child[]
+  attendances     Attendance[]
+  
+  observations    String?
+  status          String        @default("Activo") // Activo, Inactivo, Suspendido
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+// Hijos de beneficiarios
+model Child {
+  id              Int           @id @default(autoincrement())
+  fullName        String
+  gender          String        // M/F
+  nationalId      String?
+  birthDate       DateTime
+  isStudying      Boolean       @default(false)
+  observations    String?
+  
+  beneficiaryId   Int
+  beneficiary     Beneficiary   @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+}
+
+// Registro de Asistencia y AtenciÃ³n
+model Attendance {
+  id                Int         @id @default(autoincrement())
+  date              DateTime    // Fecha de atenciÃ³n
+  
+  beneficiaryId     Int
+  beneficiary       Beneficiary @relation(fields: [beneficiaryId], references: [id])
+  
+  // Detalles de la ayuda recibida
+  receivedFood      Boolean     @default(false)
+  foodQuantity      Int         @default(0) // Cantidad de bolsas/alimentos
+  receivedClothes   Boolean     @default(false)
+  clothesQuantity   Int         @default(0) // Cantidad de prendas
+  receivedMedical   Boolean     @default(false)
+  medicinesReceived String?     // Lista de medicinas separadas por coma
+  
+  signature         String?     // PodrÃ­a ser un path a una imagen o boolean si firmÃ³ en fÃ­sico
+  status            String      @default("Presente") // Presente, Ausente
+
+  createdAt         DateTime    @default(now())
+}
+
+// Calendario de Servicios (Nuevo)
+model ServiceDay {
+  id              Int       @id @default(autoincrement())
+  date            DateTime  @unique // Solo un grupo por dÃ­a (o null si es feriado explicitamente "Sin Servicio")
+  
+  groupId         Int?      // Si null, podrÃ­a ser dÃ­a libre/feriado
+  group           Group?    @relation(fields: [groupId], references: [id])
+  
+  note            String?   // "Feriado", "Extraordinario", etc.
+  isHoliday       Boolean   @default(false)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
