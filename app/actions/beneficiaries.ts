@@ -17,16 +17,19 @@ type ChildInput = {
 type BeneficiaryInput = {
     fullName: string
     nationalId: string
+    phoneNumber?: string
     birthDate: Date
     placeOfBirth: string
     gender: string
     address: string
+    zone?: string
     chronicIllness?: string
     photoUrl?: string
     hasChildren: boolean
     observations?: string
     groupId?: number
     children?: ChildInput[]
+    status?: string
 }
 
 export async function createBeneficiary(data: BeneficiaryInput) {
@@ -45,7 +48,10 @@ export async function createBeneficiary(data: BeneficiaryInput) {
         return { success: true, data: newBeneficiary };
     } catch (error: any) {
         console.error('Error creating beneficiary:', error);
-        return { success: false, error: error.message || 'Error desconocido al registrar beneficiario.' };
+        if (error.code === 'P2002') {
+            return { success: false, error: 'Ya existe un beneficiario registrado con esta Cédula de Identidad.' };
+        }
+        return { success: false, error: 'Error al registrar beneficiario. Por favor verifique los datos.' };
     }
 }
 
@@ -88,9 +94,12 @@ export async function updateBeneficiary(id: number, data: Partial<BeneficiaryInp
         revalidatePath(`/dashboard/beneficiaries/${id}`);
         revalidatePath('/dashboard/beneficiaries');
         return { success: true, data: updated };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error updating beneficiary:', error);
-        return { success: false, error: 'Error al actualizar beneficiario' };
+        if (error.code === 'P2002') {
+            return { success: false, error: 'Ya existe otro beneficiario registrado con esta Cédula de Identidad.' };
+        }
+        return { success: false, error: 'Error al actualizar beneficiario. Por favor intente nuevamente.' };
     }
 }
 
@@ -109,6 +118,21 @@ export async function moveBeneficiary(id: number, targetGroupId: number | null) 
     }
 }
 
+
+export async function updateBeneficiaryStatus(id: number, status: string) {
+    try {
+        const updated = await prisma.beneficiary.update({
+            where: { id },
+            data: { status }
+        });
+        revalidatePath('/dashboard/beneficiaries');
+        return { success: true, data: updated };
+    } catch (error) {
+        console.error('Error updating status:', error);
+        return { success: false, error: 'Error al actualizar estatus' };
+    }
+}
+
 export async function getBeneficiaries(filters?: { groupId?: number, search?: string }) {
     try {
         const where: any = {};
@@ -118,14 +142,22 @@ export async function getBeneficiaries(filters?: { groupId?: number, search?: st
         if (filters?.search) {
             where.OR = [
                 { fullName: { contains: filters.search } },
-                { nationalId: { contains: filters.search } }
+                { nationalId: { contains: filters.search } },
+                { phoneNumber: { contains: filters.search } }
             ];
         }
 
         const beneficiaries = await prisma.beneficiary.findMany({
             where,
             orderBy: { fullName: 'asc' },
-            include: { group: true }
+            include: {
+                group: true,
+                attendances: {
+                    take: 1,
+                    orderBy: { date: 'desc' },
+                    select: { date: true }
+                }
+            }
         });
         return { success: true, data: beneficiaries };
     } catch (error) {
@@ -151,5 +183,19 @@ export async function getBeneficiaryById(id: number) {
     } catch (error) {
         console.error('Error fetching beneficiary:', error);
         return { success: false, error: 'Error al obtener detalles del beneficiario' };
+    }
+}
+
+export async function deleteBeneficiary(id: number) {
+    try {
+        await prisma.beneficiary.delete({
+            where: { id }
+        });
+        revalidatePath('/dashboard/beneficiaries');
+        revalidatePath('/dashboard/groups');
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting beneficiary:', error);
+        return { success: false, error: 'Error al eliminar beneficiario' };
     }
 }

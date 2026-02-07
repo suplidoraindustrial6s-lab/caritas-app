@@ -35,6 +35,7 @@ export default function BeneficiaryForm({ initialData, groups, isEditing = false
     const [formData, setFormData] = useState({
         fullName: initialData?.fullName || '',
         nationalId: initialData?.nationalId || '',
+        phoneNumber: initialData?.phoneNumber || '',
         birthDate: initialData?.birthDate ? new Date(initialData.birthDate).toISOString().split('T')[0] : '',
         gender: initialData?.gender || 'F',
         placeOfBirth: initialData?.placeOfBirth || '',
@@ -193,9 +194,9 @@ export default function BeneficiaryForm({ initialData, groups, isEditing = false
             } else {
                 setError(result.error as string);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            setError('Ocurrió un error inesperado al procesar la solicitud.');
+            setError(err.message || 'Ocurrió un error inesperado al procesar la solicitud.');
         } finally {
             setLoading(false);
         }
@@ -240,6 +241,14 @@ export default function BeneficiaryForm({ initialData, groups, isEditing = false
                     value={formData.nationalId}
                     onChange={handleChange}
                     required
+                />
+
+                <Input
+                    label="Teléfono"
+                    name="phoneNumber"
+                    value={formData.phoneNumber || ''}
+                    onChange={handleChange}
+                    placeholder="0414-123.45.67"
                 />
 
                 <div className="flex gap-4">

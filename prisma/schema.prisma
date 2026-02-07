@@ -3,16 +3,17 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-// Grupos de atención (Ej. Fe, Esperanza, Caridad, Amor, Lista de Espera)
+// Grupos de atenciÃ³n (Ej. Fe, Esperanza, Caridad, Amor, Lista de Espera)
 model Group {
   id          Int           @id @default(autoincrement())
   name        String        @unique // Nombre corto creativo
   description String?
   beneficiaries Beneficiary[]
+  serviceDays   ServiceDay[] // Relacin inversa
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 }
@@ -21,12 +22,13 @@ model Group {
 model Beneficiary {
   id              Int           @id @default(autoincrement())
   fullName        String
-  nationalId      String        @unique // Cédula de Identidad
+  nationalId      String        @unique // CÃ©dula de Identidad
+  phoneNumber     String?       // Telefono de contacto
   birthDate       DateTime
   placeOfBirth    String
   gender          String        // M/F
   address         String
-  zone            String?       // Zona de residencia (Ej. El Limón, Caña de Azúcar)
+  zone            String?       // Zona de residencia (Ej. El LimÃ³n, CaÃ±a de AzÃºcar)
   photoUrl        String?       // URL de la foto carnet
   chronicIllness  String?       // "None" or description
   hasChildren     Boolean       @default(false)
@@ -38,6 +40,7 @@ model Beneficiary {
   attendances     Attendance[]
   
   observations    String?
+  status          String        @default("Activo") // Activo, Inactivo, Suspendido
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
@@ -56,10 +59,10 @@ model Child {
   beneficiary     Beneficiary   @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
 }
 
-// Registro de Asistencia y Atención
+// Registro de Asistencia y AtenciÃ³n
 model Attendance {
   id                Int         @id @default(autoincrement())
-  date              DateTime    // Fecha de atención
+  date              DateTime    // Fecha de atenciÃ³n
   
   beneficiaryId     Int
   beneficiary       Beneficiary @relation(fields: [beneficiaryId], references: [id])
@@ -72,7 +75,23 @@ model Attendance {
   receivedMedical   Boolean     @default(false)
   medicinesReceived String?     // Lista de medicinas separadas por coma
   
-  signature         String?     // Podría ser un path a una imagen o boolean si firmó en físico
-  
+  signature         String?     // PodrÃ­a ser un path a una imagen o boolean si firmÃ³ en fÃ­sico
+  status            String      @default("Presente") // Presente, Ausente
+
   createdAt         DateTime    @default(now())
+}
+
+// Calendario de Servicios (Nuevo)
+model ServiceDay {
+  id              Int       @id @default(autoincrement())
+  date            DateTime  @unique // Solo un grupo por dÃ­a (o null si es feriado explicitamente "Sin Servicio")
+  
+  groupId         Int?      // Si null, podrÃ­a ser dÃ­a libre/feriado
+  group           Group?    @relation(fields: [groupId], references: [id])
+  
+  note            String?   // "Feriado", "Extraordinario", etc.
+  isHoliday       Boolean   @default(false)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }

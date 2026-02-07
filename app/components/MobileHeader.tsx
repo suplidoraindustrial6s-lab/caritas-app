@@ -19,14 +19,27 @@ export default function MobileHeader() {
 
     return (
         <div className="md:hidden bg-white border-b border-border sticky top-0 z-50">
-            <div className="flex items-center justify-between p-4">
-                <span className="font-bold text-primary text-lg">Cáritas Parroquial</span>
+            <div className="flex items-center justify-between p-4 gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="relative w-12 h-12 flex-none">
+                        <img
+                            src="/logo.png"
+                            alt="Logo Parroquia"
+                            className="object-contain w-full h-full drop-shadow-sm"
+                        />
+                    </div>
+                    <div className="flex flex-col min-w-0 leading-tight">
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-tight truncate">Parroquia Ntra. Sra. de la Medalla Milagrosa</span>
+                        <span className="font-bold text-primary text-base truncate">Cáritas Parroquial</span>
+                        <span className="text-[10px] text-slate-500 font-medium truncate">Pbro. Jin Alexander Gil - Director</span>
+                    </div>
+                </div>
                 <button
                     onClick={() => setIsOpen(!isOpen)}
-                    className="p-2 rounded-lg hover:bg-muted focus:outline-none"
+                    className="p-2 rounded-lg hover:bg-muted focus:outline-none flex-none"
                     aria-label="Menu"
                 >
-                    <span className="text-2xl">{isOpen ? '✕' : '☰'}</span>
+                    <span className="text-2xl text-primary">{isOpen ? '✕' : '☰'}</span>
                 </button>
             </div>
 
@@ -42,8 +55,8 @@ export default function MobileHeader() {
                                     href={item.href}
                                     onClick={() => setIsOpen(false)}
                                     className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive
-                                            ? 'bg-primary text-primary-foreground shadow-md'
-                                            : 'text-muted-foreground hover:bg-muted'
+                                        ? 'bg-primary text-primary-foreground shadow-md'
+                                        : 'text-muted-foreground hover:bg-muted'
                                         }`}
                                 >
                                     <span className="text-xl">{item.icon}</span>

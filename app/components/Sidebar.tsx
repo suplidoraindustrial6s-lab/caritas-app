@@ -31,6 +31,10 @@ export default function Sidebar() {
                     Parroquia Nuestra Señora de la Medalla Milagrosa
                 </h1>
                 <p className="text-sm text-muted-foreground mt-1">El Limón</p>
+                <div className="mt-3 pt-3 border-t border-border/40 w-full">
+                    <p className="text-xs font-semibold text-primary/80">Pbro. Jin Alexander Gil</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Director</p>
+                </div>
             </div>
 
             <nav className="flex-1 p-4 space-y-2 overflow-y-auto">

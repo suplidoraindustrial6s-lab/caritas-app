@@ -9,13 +9,14 @@ export const dynamic = 'force-dynamic';
 export default async function BeneficiariesPage({
     searchParams,
 }: {
-    searchParams?: {
+    searchParams?: Promise<{
         search?: string;
         groupId?: string;
-    };
+    }>;
 }) {
-    const search = searchParams?.search || '';
-    const groupId = searchParams?.groupId ? parseInt(searchParams.groupId) : undefined;
+    const params = await searchParams;
+    const search = params?.search || '';
+    const groupId = params?.groupId ? parseInt(params.groupId) : undefined;
 
     const { data: beneficiaries } = await getBeneficiaries({ search, groupId });
 

@@ -62,13 +62,13 @@ export default function AttendanceModal({ beneficiary, onClose, onSuccess }: Att
     const chartData = historyData?.attendances?.map((a: any) => ({
         date: new Date(a.date).toLocaleDateString('es-VE'),
         ropa: a.clothesQuantity,
-        comida: a.receivedFood ? 1 : 0,
+        comida: a.foodQuantity || (a.receivedFood ? 1 : 0),
         medicina: a.receivedMedical ? 1 : 0
     })).reverse() || [];
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] ring-1 ring-white/20">
 
                 {/* Header */}
                 <div className="p-6 border-b border-border bg-slate-50 flex justify-between items-center">
@@ -98,7 +98,7 @@ export default function AttendanceModal({ beneficiary, onClose, onSuccess }: Att
                             <div className="grid grid-cols-1 gap-4">
                                 <div className="p-4 rounded-xl border border-border space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <label htmlFor="food" className="font-medium cursor-pointer select-none">📦 Bolsa de Alimentos</label>
+                                        <label htmlFor="food" className="font-medium cursor-pointer select-none">📦 Productos Entregados</label>
                                         <input
                                             type="checkbox"
                                             id="food"
@@ -111,7 +111,7 @@ export default function AttendanceModal({ beneficiary, onClose, onSuccess }: Att
                                         <div className="pl-4 border-l-2 border-primary/20">
                                             <Input
                                                 type="number"
-                                                label="Cantidad de Bolsas"
+                                                label="Cantidad de Productos"
                                                 value={formData.foodQuantity}
                                                 onChange={(e) => setFormData({ ...formData, foodQuantity: Number(e.target.value) })}
                                                 min={0}
@@ -156,7 +156,7 @@ export default function AttendanceModal({ beneficiary, onClose, onSuccess }: Att
                                         <YAxis fontSize={12} />
                                         <Tooltip />
                                         <Legend />
-                                        <Bar dataKey="comida" name="Bolsas" fill="#f97316" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="comida" name="Productos" fill="#f97316" radius={[4, 4, 0, 0]} />
                                         <Bar dataKey="ropa" name="Ropa" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                                         <Bar dataKey="medicina" name="Medicina" fill="#22c55e" radius={[4, 4, 0, 0]} />
                                     </BarChart>
