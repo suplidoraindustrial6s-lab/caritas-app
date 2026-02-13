@@ -12,7 +12,12 @@ export default async function ServicePage() {
 
     // Fetch all beneficiaries with their latest attendance to determine status
     const beneficiaries = await prisma.beneficiary.findMany({
-        include: {
+        select: {
+            id: true,
+            fullName: true,
+            nationalId: true,
+            groupId: true,
+            photoUrl: true,
             attendances: {
                 orderBy: { date: 'desc' },
                 take: 1
@@ -20,6 +25,16 @@ export default async function ServicePage() {
         },
         orderBy: { fullName: 'asc' }
     });
+
+    // Serializar datos para el componente cliente
+    const serializedBeneficiaries = beneficiaries.map(b => ({
+        id: b.id,
+        fullName: b.fullName,
+        nationalId: b.nationalId,
+        groupId: b.groupId,
+        photoUrl: b.photoUrl, // Asegurar que photoUrl se incluya
+        attendances: b.attendances
+    }));
 
     return (
         <div className="space-y-6">
@@ -33,7 +48,7 @@ export default async function ServicePage() {
                 </div>
             </div>
 
-            <ServiceManager groups={groups || []} initialData={beneficiaries} />
+            <ServiceManager groups={groups || []} initialData={serializedBeneficiaries} />
         </div>
     );
 }

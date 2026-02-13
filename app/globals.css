@@ -1,29 +1,31 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc; /* Slate 50 */
-  --foreground: #0f172a; /* Slate 900 */
-  
+  --background: #f8fafc;
+  /* Slate 50 */
+  --foreground: #0f172a;
+  /* Slate 900 */
+
   /* Primary - Royal Blue */
   --primary: #1e40af;
   --primary-foreground: #ffffff;
-  
+
   /* Secondary - Gold/Amber */
   --secondary: #d97706;
   --secondary-foreground: #ffffff;
-  
+
   /* Accent - Teal */
   --accent: #0d9488;
   --accent-foreground: #ffffff;
-  
+
   /* Muted */
   --muted: #f1f5f9;
   --muted-foreground: #64748b;
-  
+
   /* Card */
   --card: #ffffff;
   --card-foreground: #0f172a;
-  
+
   /* Borders */
   --border: #e2e8f0;
 }
@@ -42,7 +44,7 @@
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-border: var(--border);
-  
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -58,5 +60,18 @@ body {
     background: rgba(255, 255, 255, 0.7);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* Print Styles for Reports/Signatures */
+@media print {
+  @page {
+    size: landscape;
+    margin: 0.4cm;
+  }
+
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 }

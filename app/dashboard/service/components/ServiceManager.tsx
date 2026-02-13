@@ -14,6 +14,9 @@ interface ServiceManagerProps {
 }
 
 export default function ServiceManager({ groups, initialData }: ServiceManagerProps) {
+    // Debug: Verificar si photoUrl está en los datos
+    console.log('ServiceManager - Sample beneficiary data:', initialData[0]);
+
     const [selectedGroupId, setSelectedGroupId] = useState(groups[0]?.id);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedBeneficiary, setSelectedBeneficiary] = useState<any>(null);
@@ -228,8 +231,12 @@ export default function ServiceManager({ groups, initialData }: ServiceManagerPr
                                                     </div>
                                                 )}
 
-                                                <div className={`w-16 h-16 rounded-2xl mb-3 flex items-center justify-center text-2xl shadow-sm ${styles.bg} ${styles.color}`}>
-                                                    {beneficiary.fullName.charAt(0)}
+                                                <div className={`w-16 h-16 rounded-2xl mb-3 relative overflow-hidden flex items-center justify-center text-2xl shadow-sm ${styles.bg} ${styles.color}`}>
+                                                    {beneficiary.photoUrl ? (
+                                                        <img src={beneficiary.photoUrl} alt={beneficiary.fullName} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        beneficiary.fullName.charAt(0)
+                                                    )}
                                                 </div>
 
                                                 <h4 className="font-bold text-slate-900 text-lg leading-snug mb-2">{beneficiary.fullName}</h4>
@@ -270,8 +277,12 @@ export default function ServiceManager({ groups, initialData }: ServiceManagerPr
                                                 <div className={`absolute left-0 top-0 bottom-0 w-1 md:w-1.5 ${styles.bg.replace('50', '500')}`}></div>
 
                                                 <div className="flex items-center gap-3 md:gap-4 pl-2 md:pl-3 overflow-hidden">
-                                                    <div className={`flex-none w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center font-bold text-base md:text-xl bg-white/80 ${styles.color} shadow-sm backdrop-blur-sm`}>
-                                                        {beneficiary.fullName.charAt(0)}
+                                                    <div className={`flex-none w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl relative overflow-hidden flex items-center justify-center font-bold text-base md:text-xl bg-white/80 ${styles.color} shadow-sm backdrop-blur-sm`}>
+                                                        {beneficiary.photoUrl ? (
+                                                            <img src={beneficiary.photoUrl} alt={beneficiary.fullName} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            beneficiary.fullName.charAt(0)
+                                                        )}
                                                     </div>
                                                     <div className="min-w-0">
                                                         <h4 className={`text-sm md:text-lg font-bold text-slate-900 group-hover:text-black truncate`}>{beneficiary.fullName}</h4>
