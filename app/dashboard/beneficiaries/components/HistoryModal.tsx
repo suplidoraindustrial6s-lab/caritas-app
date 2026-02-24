@@ -17,7 +17,7 @@ export default function HistoryModal({ beneficiaryId, beneficiaryName, onClose }
     useEffect(() => {
         getBeneficiaryHistory(beneficiaryId).then(res => {
             if (res.success) {
-                setHistory(res.data);
+                setHistory(res.data || []);
             }
             setLoading(false);
         });
@@ -65,8 +65,8 @@ export default function HistoryModal({ beneficiaryId, beneficiaryName, onClose }
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2 py-1 rounded-full text-xs font-bold ${record.status === 'Presente'
-                                                    ? 'bg-emerald-100 text-emerald-700'
-                                                    : 'bg-red-100 text-red-700'
+                                                ? 'bg-emerald-100 text-emerald-700'
+                                                : 'bg-red-100 text-red-700'
                                                 }`}>
                                                 {record.status}
                                             </span>

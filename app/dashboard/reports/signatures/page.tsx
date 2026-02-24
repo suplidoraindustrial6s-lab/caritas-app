@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getServiceSchedule2026 } from '@/app/lib/schedule';
 
-export default function SignatureListPage() {
+function SignatureListContent() {
     const searchParams = useSearchParams();
     const groupId = searchParams.get('groupId');
     const month = searchParams.get('month');
@@ -182,5 +182,13 @@ export default function SignatureListPage() {
                 </button>
             </div>
         </div>
+    );
+}
+
+export default function SignatureListPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center">Cargando reporte...</div>}>
+            <SignatureListContent />
+        </Suspense>
     );
 }
