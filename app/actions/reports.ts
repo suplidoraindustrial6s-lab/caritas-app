@@ -31,21 +31,21 @@ export async function getReportsData(startDate?: string, endDate?: string) {
             _sum: { clothesQuantity: true }
         });
 
-        const foodCount = await prisma.attendance.count({
-            where: { ...attendanceWhere, receivedFood: true }
+        const foodAgg = await prisma.attendance.aggregate({
+            where: { ...attendanceWhere, receivedFood: true },
+            _sum: { foodQuantity: true }
         });
+        const foodCount = foodAgg._sum.foodQuantity || 0;
 
         const medicalCount = await prisma.attendance.count({
             where: { ...attendanceWhere, receivedMedical: true }
         });
 
-        // Count unique people attended in this period
-        const uniqueAttended = await prisma.attendance.groupBy({
-            by: ['beneficiaryId'],
-            where: attendanceWhere,
-            _count: { _all: true }
+        // Count total attendances (Services delivered) instead of unique people
+        // This ensures the counter increments with every service provided
+        const peopleAttendedCount = await prisma.attendance.count({
+            where: attendanceWhere
         });
-        const peopleAttendedCount = uniqueAttended.length;
 
         // 3. Demographics by Zone (Total stock)
         const zoneStats = await prisma.beneficiary.groupBy({
@@ -60,6 +60,7 @@ export async function getReportsData(startDate?: string, endDate?: string) {
             select: {
                 date: true,
                 receivedFood: true,
+                foodQuantity: true, // Added
                 receivedMedical: true,
                 clothesQuantity: true
             },
@@ -75,6 +76,7 @@ export async function getReportsData(startDate?: string, endDate?: string) {
                             where: hasDateFilter ? { date: dateFilter } : undefined,
                             select: {
                                 receivedFood: true,
+                                foodQuantity: true, // Added
                                 receivedMedical: true,
                                 clothesQuantity: true
                             }
@@ -91,7 +93,7 @@ export async function getReportsData(startDate?: string, endDate?: string) {
 
             g.beneficiaries.forEach((b) => {
                 b.attendances.forEach((a) => {
-                    if (a.receivedFood) food++;
+                    if (a.receivedFood) food += (a.foodQuantity || 1);
                     if (a.receivedMedical) medical++;
                     clothesItems += a.clothesQuantity;
                 });

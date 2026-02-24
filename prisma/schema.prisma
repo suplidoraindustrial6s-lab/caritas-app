@@ -67,31 +67,57 @@ model Attendance {
   beneficiaryId     Int
   beneficiary       Beneficiary @relation(fields: [beneficiaryId], references: [id])
   
+  // RelaciÃ³n con la Jornada (ServiceDay)
+  serviceDayId      Int?
+  serviceDay        ServiceDay? @relation(fields: [serviceDayId], references: [id])
+
   // Detalles de la ayuda recibida
   receivedFood      Boolean     @default(false)
   foodQuantity      Int         @default(0) // Cantidad de bolsas/alimentos
+  
   receivedClothes   Boolean     @default(false)
   clothesQuantity   Int         @default(0) // Cantidad de prendas
+  
   receivedMedical   Boolean     @default(false)
-  medicinesReceived String?     // Lista de medicinas separadas por coma
+  medicinesReceived String?     // Legacy: Lista simple
+  medicinesDetail   String?     // Nuevo: JSON Stringificado [{ name: string, quantity: number }]
   
   signature         String?     // PodrÃ­a ser un path a una imagen o boolean si firmÃ³ en fÃ­sico
   status            String      @default("Presente") // Presente, Ausente
 
   createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt // Para tracking de modificaciones (upsert)
 }
 
-// Calendario de Servicios (Nuevo)
+// Jornada de Servicio (Antes Calendario)
 model ServiceDay {
   id              Int       @id @default(autoincrement())
-  date            DateTime  @unique // Solo un grupo por dÃ­a (o null si es feriado explicitamente "Sin Servicio")
+  date            DateTime  @unique // Solo un grupo por dÃ­a
   
-  groupId         Int?      // Si null, podrÃ­a ser dÃ­a libre/feriado
+  groupId         Int?      // Grupo asignado a la jornada
   group           Group?    @relation(fields: [groupId], references: [id])
   
+  // Estado de la jornada
+  status          String    @default("OPEN") // OPEN, CLOSED
+  summary         String?   // JSON Stringificado: MÃ©tricas congeladas al cerrar { totalBeneficiaries, totalFood, etc. }
+  closedAt        DateTime? 
+
   note            String?   // "Feriado", "Extraordinario", etc.
   isHoliday       Boolean   @default(false)
 
+  attendances     Attendance[] // RelaciÃ³n inversa
+
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+}
+
+// Usuarios del Sistema (Administradores)
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String   // Hashed
+  name      String?
+  role      String   @default("ADMIN")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

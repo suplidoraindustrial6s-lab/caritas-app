@@ -5,8 +5,15 @@ import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-export default async function EditBeneficiaryPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditBeneficiaryPage({
+    params,
+    searchParams
+}: {
+    params: Promise<{ id: string }>,
+    searchParams: Promise<{ sourceGroup?: string }>
+}) {
     const { id: idString } = await params;
+    const { sourceGroup } = await searchParams;
     const id = parseInt(idString);
     if (isNaN(id)) notFound();
 
@@ -28,6 +35,7 @@ export default async function EditBeneficiaryPage({ params }: { params: Promise<
                 groups={groups}
                 initialData={beneficiary}
                 isEditing
+                sourceGroup={sourceGroup ? parseInt(sourceGroup) : undefined}
             />
         </div>
     );

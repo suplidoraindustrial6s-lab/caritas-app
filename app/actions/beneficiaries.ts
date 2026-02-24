@@ -199,3 +199,21 @@ export async function deleteBeneficiary(id: number) {
         return { success: false, error: 'Error al eliminar beneficiario' };
     }
 }
+
+export async function getBeneficiaryHistory(id: number) {
+    try {
+        const attendances = await prisma.attendance.findMany({
+            where: { beneficiaryId: id },
+            orderBy: { date: 'desc' },
+            include: {
+                serviceDay: {
+                    include: { group: true }
+                }
+            }
+        });
+        return { success: true, data: attendances };
+    } catch (error) {
+        console.error('Error fetching history:', error);
+        return { success: false, error: 'Error al obtener historial' };
+    }
+}

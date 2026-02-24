@@ -19,9 +19,10 @@ interface BeneficiaryFormProps {
     initialData?: any;
     groups?: any[];
     isEditing?: boolean;
+    sourceGroup?: number;
 }
 
-export default function BeneficiaryForm({ initialData, groups, isEditing = false }: BeneficiaryFormProps) {
+export default function BeneficiaryForm({ initialData, groups, isEditing = false, sourceGroup }: BeneficiaryFormProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -189,7 +190,11 @@ export default function BeneficiaryForm({ initialData, groups, isEditing = false
             }
 
             if (result.success) {
-                router.push('/dashboard/beneficiaries');
+                if (sourceGroup) {
+                    router.push(`/dashboard/beneficiaries?groupId=${sourceGroup}`);
+                } else {
+                    router.push('/dashboard/beneficiaries');
+                }
                 router.refresh();
             } else {
                 setError(result.error as string);

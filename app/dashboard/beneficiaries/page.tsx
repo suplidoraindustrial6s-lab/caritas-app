@@ -37,7 +37,7 @@ export default async function BeneficiariesPage({
                 {/* Aquí se podrían agregar filtros por grupo si se desea un dropdown */}
             </div>
 
-            <BeneficiaryTable beneficiaries={beneficiaries || []} />
+            <BeneficiaryTable beneficiaries={beneficiaries || []} currentGroupId={groupId} />
         </div>
     );
 }

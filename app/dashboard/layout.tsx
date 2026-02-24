@@ -1,3 +1,4 @@
+import ChatWidget from '@/app/components/ChatWidget';
 import Sidebar from '@/app/components/Sidebar';
 import MobileHeader from '@/app/components/MobileHeader';
 
@@ -15,6 +16,7 @@ export default function DashboardLayout({
                     {children}
                 </div>
             </main>
+            <ChatWidget />
         </div>
     );
 }

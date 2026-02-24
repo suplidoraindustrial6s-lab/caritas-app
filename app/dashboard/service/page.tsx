@@ -1,13 +1,15 @@
 import { getGroups } from '@/app/actions/groups';
 import { getBeneficiaries } from '@/app/actions/beneficiaries';
+import { getServiceStatus } from '@/app/actions/service';
 import ServiceManager from './components/ServiceManager';
 import prisma from '@/app/lib/prisma'; // Direct access for specialized query if needed or re-use actions
 
 export const dynamic = 'force-dynamic';
 
 export default async function ServicePage() {
-    const [{ data: groups }] = await Promise.all([
-        getGroups()
+    const [{ data: groups }, serviceStatus] = await Promise.all([
+        getGroups(),
+        getServiceStatus()
     ]);
 
     // Fetch all beneficiaries with their latest attendance to determine status
@@ -48,7 +50,7 @@ export default async function ServicePage() {
                 </div>
             </div>
 
-            <ServiceManager groups={groups || []} initialData={serializedBeneficiaries} />
+            <ServiceManager groups={groups || []} initialData={serializedBeneficiaries} serviceStatus={serviceStatus} />
         </div>
     );
 }

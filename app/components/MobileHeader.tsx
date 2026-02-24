@@ -21,7 +21,7 @@ export default function MobileHeader() {
         <div className="md:hidden bg-white border-b border-border sticky top-0 z-50">
             <div className="flex items-center justify-between p-4 gap-3">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="relative w-12 h-12 flex-none">
+                    <div className="relative w-14 h-14 flex-none">
                         <img
                             src="/logo.png"
                             alt="Logo Parroquia"
@@ -31,7 +31,7 @@ export default function MobileHeader() {
                     <div className="flex flex-col min-w-0 leading-tight">
                         <span className="text-[10px] text-muted-foreground uppercase tracking-tight truncate">Parroquia Ntra. Sra. de la Medalla Milagrosa</span>
                         <span className="font-bold text-primary text-base truncate">Cáritas Parroquial</span>
-                        <span className="text-[10px] text-slate-500 font-medium truncate">Pbro. Jin Alexander Gil - Director</span>
+                        <span className="text-[10px] text-slate-500 font-medium truncate">Pbro. Jim Alexander Gil - Director</span>
                     </div>
                 </div>
                 <button

@@ -34,40 +34,25 @@ export const getServiceSchedule2026 = (): ServiceDay[] => {
     const startDate = new Date(2026, 0, 1); // Jan 1 2026
     const endDate = new Date(2026, 11, 31);
 
-    // Anchor: Feb 3 2026 is Fe (Week A)
-    const anchorDate = new Date(2026, 1, 3); // Month is 0-indexed: 1 = Feb
-    const oneDay = 24 * 60 * 60 * 1000;
+    // Group sequence: Fe -> Esperanza -> Caridad -> Amor
+    const groups: ('Fe' | 'Esperanza' | 'Caridad' | 'Amor')[] = ['Fe', 'Esperanza', 'Caridad', 'Amor'];
+    let groupIndex = 0;
 
     let currentDate = new Date(startDate);
 
     while (currentDate <= endDate) {
         const dayOfWeek = currentDate.getDay(); // 0Sun, 1Mon, 2Tue, 3Wed, 4Thu, 5Fri, 6Sat
+        const dateStr = currentDate.toISOString().split('T')[0];
+        const isHoliday = HOLIDAYS_2026.includes(dateStr);
 
-        // Check if Tuesday (2) or Thursday (4)
-        if (dayOfWeek === 2 || dayOfWeek === 4) {
-            const dateStr = currentDate.toISOString().split('T')[0];
-
-            // Check Holidays
-            if (!HOLIDAYS_2026.includes(dateStr)) {
-                // Calculate weeks from anchor to determine Cycle
-                // anchorDate is Tue Feb 3.
-                // Difference in weeks
-                const diffTime = currentDate.getTime() - anchorDate.getTime();
-                const diffWeeks = Math.floor(Math.round(diffTime / oneDay) / 7);
-
-                // If diffWeeks is even: Week A (Same as Feb 3). If odd: Week B.
-                // Note: This assumes simple alternating.
-
-                const isCycleA = diffWeeks % 2 === 0;
-
-                if (dayOfWeek === 2) { // Tuesday
-                    if (isCycleA) schedule.push({ date: dateStr, groupName: 'Fe' });
-                    else schedule.push({ date: dateStr, groupName: 'Caridad' });
-                } else { // Thursday
-                    if (isCycleA) schedule.push({ date: dateStr, groupName: 'Esperanza' });
-                    else schedule.push({ date: dateStr, groupName: 'Amor' });
-                }
-            }
+        // Service days are Tuesdays (2) and Thursdays (4)
+        if ((dayOfWeek === 2 || dayOfWeek === 4) && !isHoliday) {
+            // Assign next group in sequence
+            schedule.push({
+                date: dateStr,
+                groupName: groups[groupIndex % 4]
+            });
+            groupIndex++;
         }
 
         currentDate.setDate(currentDate.getDate() + 1);

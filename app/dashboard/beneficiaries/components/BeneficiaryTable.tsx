@@ -6,6 +6,7 @@ import { Badge } from '@/app/components/ui/Badge';
 import Link from 'next/link';
 import Image from 'next/image';
 import { updateBeneficiaryStatus, deleteBeneficiary } from '@/app/actions/beneficiaries';
+import HistoryModal from './HistoryModal';
 
 interface Beneficiary {
     id: number;
@@ -24,9 +25,15 @@ const VIEW_MODES = [
     { id: 'compact', icon: '📄', label: 'Detalles' },
 ];
 
-export default function BeneficiaryTable({ beneficiaries }: { beneficiaries: Beneficiary[] }) {
+export default function BeneficiaryTable({ beneficiaries, currentGroupId }: { beneficiaries: Beneficiary[], currentGroupId?: number }) {
     const [viewMode, setViewMode] = useState('list');
-    const [isDeleting, setIsDeleting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false); // Kept for future use or remove if unused warning
+    const [historyBeneficiary, setHistoryBeneficiary] = useState<{ id: number, name: string } | null>(null);
+
+    const getEditLink = (id: number) => {
+        const base = `/dashboard/beneficiaries/${id}`;
+        return currentGroupId ? `${base}?sourceGroup=${currentGroupId}` : base;
+    };
 
     const handleStatusChange = async (id: number, newStatus: string) => {
         await updateBeneficiaryStatus(id, newStatus);
@@ -99,6 +106,14 @@ export default function BeneficiaryTable({ beneficiaries }: { beneficiaries: Ben
 
     return (
         <div className="space-y-6">
+            {historyBeneficiary && (
+                <HistoryModal
+                    beneficiaryId={historyBeneficiary.id}
+                    beneficiaryName={historyBeneficiary.name}
+                    onClose={() => setHistoryBeneficiary(null)}
+                />
+            )}
+
             {/* View Toggle */}
             <div className="flex justify-end">
                 <div className="bg-white p-1.5 rounded-2xl border border-slate-100 inline-flex shadow-sm">
@@ -156,7 +171,14 @@ export default function BeneficiaryTable({ beneficiaries }: { beneficiaries: Ben
                                 </div>
 
                                 <div className="flex items-center gap-1 md:gap-2 pl-2">
-                                    <Link href={`/dashboard/beneficiaries/${b.id}`}>
+                                    <button
+                                        onClick={() => setHistoryBeneficiary({ id: b.id, name: b.fullName })}
+                                        className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all"
+                                        title="Ver Historial"
+                                    >
+                                        🕒
+                                    </button>
+                                    <Link href={getEditLink(b.id)}>
                                         <button className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all" title="Editar">
                                             ✏️
                                         </button>
@@ -195,7 +217,14 @@ export default function BeneficiaryTable({ beneficiaries }: { beneficiaries: Ben
                                         {b.group?.name || 'N/A'}
                                     </span>
                                     <div className="flex gap-1">
-                                        <Link href={`/dashboard/beneficiaries/${b.id}`} className="w-6 h-6 flex items-center justify-center bg-white/50 hover:bg-white rounded-full text-xs">✏️</Link>
+                                        <button
+                                            onClick={() => setHistoryBeneficiary({ id: b.id, name: b.fullName })}
+                                            className="w-6 h-6 flex items-center justify-center bg-white/50 hover:bg-white rounded-full text-xs"
+                                            title="Historial"
+                                        >
+                                            🕒
+                                        </button>
+                                        <Link href={getEditLink(b.id)} className="w-6 h-6 flex items-center justify-center bg-white/50 hover:bg-white rounded-full text-xs">✏️</Link>
                                     </div>
                                 </div>
 
@@ -266,7 +295,14 @@ export default function BeneficiaryTable({ beneficiaries }: { beneficiaries: Ben
                                 </div>
 
                                 <div className="flex-none flex gap-1">
-                                    <Link href={`/dashboard/beneficiaries/${b.id}`} className="w-7 h-7 flex items-center justify-center bg-white/60 hover:bg-white rounded-lg text-slate-400 hover:text-indigo-600 transition-colors text-xs">
+                                    <button
+                                        onClick={() => setHistoryBeneficiary({ id: b.id, name: b.fullName })}
+                                        className="w-7 h-7 flex items-center justify-center bg-white/60 hover:bg-white rounded-lg text-slate-400 hover:text-amber-600 transition-colors text-xs"
+                                        title="Historial"
+                                    >
+                                        🕒
+                                    </button>
+                                    <Link href={getEditLink(b.id)} className="w-7 h-7 flex items-center justify-center bg-white/60 hover:bg-white rounded-lg text-slate-400 hover:text-indigo-600 transition-colors text-xs">
                                         ✏️
                                     </Link>
                                 </div>

@@ -6,37 +6,79 @@ import AttendanceModal from './AttendanceModal';
 import { Badge } from '@/app/components/ui/Badge';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { closeServiceDay, getServiceDayReport } from '@/app/actions/service';
+import { closeServiceDay, getServiceDayReport, startServiceDay } from '@/app/actions/service';
 
 interface ServiceManagerProps {
     groups: any[];
     initialData: any[]; // Beneficiaries
+    serviceStatus: {
+        isOpen: boolean;
+        service?: any;
+        totalAttendees?: number;
+    };
 }
 
-export default function ServiceManager({ groups, initialData }: ServiceManagerProps) {
-    // Debug: Verificar si photoUrl está en los datos
-    console.log('ServiceManager - Sample beneficiary data:', initialData[0]);
+export default function ServiceManager({ groups, initialData, serviceStatus }: ServiceManagerProps) {
+    const getGroupStyles = (name: string) => {
+        switch (name) {
+            case 'Fe': return { color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', shadow: 'shadow-blue-100', icon: '✨' };
+            case 'Esperanza': return { color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', shadow: 'shadow-emerald-100', icon: '🌱' };
+            case 'Caridad': return { color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', shadow: 'shadow-purple-100', icon: '💜' };
+            case 'Amor': return { color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', shadow: 'shadow-red-100', icon: '❤️' };
+            default: return { color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-200', shadow: 'shadow-slate-100', icon: '👥' };
+        }
+    };
 
-    const [selectedGroupId, setSelectedGroupId] = useState(groups[0]?.id);
+
+
+    // Si hay jornada abierta, forzar el grupo seleccionado
+    const activeGroupId = serviceStatus.isOpen ? serviceStatus.service?.groupId : null;
+
+    // Estado local para cuando NO hay jornada abierta
+    const [selectedGroupId, setSelectedGroupId] = useState(activeGroupId || groups[0]?.id);
+    const [isStarting, setIsStarting] = useState(false);
+
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedBeneficiary, setSelectedBeneficiary] = useState<any>(null);
     const [viewMode, setViewMode] = useState<'list' | 'grid' | 'compact'>('list');
 
     // Filter beneficiaries by group and search term
+    // Si hay jornada abierta, usar el grupo activo. Si no, permitir explorar (o bloquear).
+    // Decisión: Permitir explorar grupos pero NO registrar hasta iniciar jornada.
+    // O mejor: Mostrar "Pantalla de Inicio de Jornada" si está cerrada.
+
+    const currentGroup = activeGroupId || selectedGroupId;
+
     const filteredBeneficiaries = initialData.filter(b => {
-        const matchesGroup = b.groupId === selectedGroupId;
+        const matchesGroup = b.groupId === currentGroup;
         const matchesSearch = b.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             b.nationalId.includes(searchTerm);
         return matchesGroup && matchesSearch;
     });
 
+    const handleStartDay = async () => {
+        setIsStarting(true);
+        try {
+            const result = await startServiceDay(selectedGroupId);
+            if (result.success) {
+                window.location.reload();
+            } else {
+                alert('Error: ' + result.error);
+                setIsStarting(false);
+            }
+        } catch (e) {
+            alert('Error al iniciar jornada');
+            setIsStarting(false);
+        }
+    };
+
     const handleCloseDay = async () => {
         if (!confirm('¿Estás seguro de cerrar la jornada? Se marcarán como AUSENTES a quienes no asistieron y se generará el reporte.')) return;
 
         try {
-            const result = await closeServiceDay(selectedGroupId);
+            const result = await closeServiceDay(serviceStatus.service.id);
             if (result.success) {
-                alert(`Jornada cerrada. Asistentes: ${result.stats?.present}, Ausentes: ${result.stats?.absent}`);
+                alert(`Jornada cerrada.`);
                 await generateReport();
                 window.location.reload();
             } else {
@@ -48,8 +90,56 @@ export default function ServiceManager({ groups, initialData }: ServiceManagerPr
         }
     };
 
+    // Si NO hay jornada abierta, mostrar pantalla de selección de inicio
+    if (!serviceStatus.isOpen) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-8 animate-in fade-in zoom-in duration-500">
+                <div className="space-y-4">
+                    <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+                        <span className="text-5xl">🌅</span>
+                    </div>
+                    <h2 className="text-3xl font-bold text-slate-900">Iniciar Jornada de Servicio</h2>
+                    <p className="text-slate-500 max-w-md mx-auto">Selecciona el grupo que será atendido hoy para comenzar el registro de asistencia y entregas.</p>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 w-full max-w-4xl px-4">
+                    {groups.map((group) => {
+                        const styles = getGroupStyles(group.name);
+                        const isSelected = selectedGroupId === group.id;
+                        return (
+                            <button
+                                key={group.id}
+                                onClick={() => setSelectedGroupId(group.id)}
+                                className={`
+                                    flex flex-col items-center gap-3 p-6 rounded-2xl border-2 transition-all
+                                    ${isSelected
+                                        ? `${styles.bg} ${styles.border.replace('border-', 'border-')} ring-1 ring-offset-2 ${styles.color}`
+                                        : 'bg-white border-slate-100 hover:border-slate-300 text-slate-500 hover:bg-slate-50'
+                                    }
+                                `}
+                            >
+                                <span className="text-4xl filter drop-shadow-sm">{styles.icon}</span>
+                                <span className="font-bold">{group.name}</span>
+                            </button>
+                        )
+                    })}
+                </div>
+
+                <Button
+                    size="lg"
+                    className="text-lg px-12 py-6 rounded-2xl shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90 transition-all hover:scale-105 active:scale-95"
+                    onClick={handleStartDay}
+                    disabled={isStarting}
+                >
+                    {isStarting ? 'Iniciando...' : '🚀 Comenzar Jornada'}
+                </Button>
+            </div>
+        );
+    }
+
+    // Si HAY jornada abierta, render normal peroj con controles limitados
     const generateReport = async () => {
-        const report = await getServiceDayReport(selectedGroupId, new Date().toISOString());
+        const report = await getServiceDayReport(serviceStatus.service.id, new Date().toISOString());
         if (!report.success || !report.records) return;
 
         const doc = new jsPDF();
@@ -81,7 +171,18 @@ export default function ServiceManager({ groups, initialData }: ServiceManagerPr
             r.status === 'Ausente' ? 'AUSENTE' : 'PRESENTE',
             r.receivedFood ? `Si (${r.foodQuantity})` : '-',
             r.receivedClothes ? `Si (${r.clothesQuantity})` : '-',
-            r.medicinesReceived || '-'
+            (() => {
+                if (!r.receivedMedical) return '-';
+                if (r.medicinesDetail) {
+                    try {
+                        const meds = JSON.parse(r.medicinesDetail);
+                        if (Array.isArray(meds) && meds.length > 0) {
+                            return meds.map((m: any) => `${m.name} (${m.quantity})`).join(', ');
+                        }
+                    } catch (e) { }
+                }
+                return r.medicinesReceived || 'Si';
+            })()
         ]);
 
         autoTable(doc, {
@@ -97,15 +198,7 @@ export default function ServiceManager({ groups, initialData }: ServiceManagerPr
         doc.save(`Reporte_Jornada_${report.groupName}_${new Date().toISOString().split('T')[0]}.pdf`);
     };
 
-    const getGroupStyles = (name: string) => {
-        switch (name) {
-            case 'Fe': return { color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', shadow: 'shadow-blue-100', icon: '✨' };
-            case 'Esperanza': return { color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', shadow: 'shadow-emerald-100', icon: '🌱' };
-            case 'Caridad': return { color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', shadow: 'shadow-purple-100', icon: '💜' };
-            case 'Amor': return { color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', shadow: 'shadow-red-100', icon: '❤️' };
-            default: return { color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-200', shadow: 'shadow-slate-100', icon: '👥' };
-        }
-    };
+
 
     return (
         <div className="space-y-8">
@@ -113,50 +206,19 @@ export default function ServiceManager({ groups, initialData }: ServiceManagerPr
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 {/* Group Selector Tabs - Dashboard Style Cards */}
                 {/* Group Selector Tabs - Mobile Grid / Desktop Flex */}
-                <div className="grid grid-cols-2 gap-2 w-full md:flex md:w-auto md:gap-4">
-                    {groups.map((group: any) => {
+                {/* Header Info - Active Group */}
+                <div className="flex flex-col md:flex-row gap-4 items-center w-full md:w-auto">
+                    {groups.filter(g => g.id === currentGroup).map(group => {
                         const styles = getGroupStyles(group.name);
-                        const isSelected = selectedGroupId === group.id;
-
-                        // Mobile-optimized colors (always colored)
-                        let mobileClass = "";
-                        if (group.name === 'Fe') mobileClass = isSelected ? "bg-blue-100 border-blue-300 ring-1 ring-blue-500" : "bg-blue-50/50 border-blue-100 text-blue-900";
-                        else if (group.name === 'Esperanza') mobileClass = isSelected ? "bg-emerald-100 border-emerald-300 ring-1 ring-emerald-500" : "bg-emerald-50/50 border-emerald-100 text-emerald-900";
-                        else if (group.name === 'Caridad') mobileClass = isSelected ? "bg-purple-100 border-purple-300 ring-1 ring-purple-500" : "bg-purple-50/50 border-purple-100 text-purple-900";
-                        else if (group.name === 'Amor') mobileClass = isSelected ? "bg-red-100 border-red-300 ring-1 ring-red-500" : "bg-red-50/50 border-red-100 text-red-900";
-                        else mobileClass = isSelected ? "bg-amber-100 border-amber-300" : "bg-amber-50/50 border-amber-100";
-
                         return (
-                            <button
-                                key={group.id}
-                                onClick={() => setSelectedGroupId(group.id)}
-                                className={`
-                                    relative flex items-center gap-2 md:gap-3 px-3 py-2 md:px-5 md:py-4 rounded-xl md:rounded-[1.5rem] transition-all duration-300
-                                    md:min-w-[160px] border
-                                    ${mobileClass}
-                                    md:bg-white md:border-slate-100
-                                    ${isSelected
-                                        ? 'md:bg-white md:shadow-lg md:ring-2 md:ring-primary md:scale-105 md:z-10 shadow-sm scale-[1.02]'
-                                        : 'md:bg-white/60 md:hover:bg-white md:hover:shadow-md md:text-slate-500 md:saturate-50 md:hover:saturate-100'
-                                    }
-                                `}
-                            >
-                                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl flex items-center justify-center text-sm md:text-lg ${styles.bg} ${styles.color} md:bg-opacity-100 bg-white/80`}>
-                                    {styles.icon}
+                            <div key={group.id} className={`flex items-center gap-3 px-5 py-3 rounded-2xl bg-white border border-slate-100 shadow-sm`}>
+                                <span className="text-2xl">{styles.icon}</span>
+                                <div className="flex flex-col">
+                                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Jornada Activa</span>
+                                    <span className={`text-xl font-bold ${styles.color}`}>{group.name}</span>
                                 </div>
-                                <div className="text-left min-w-0">
-                                    <span className={`hidden md:block text-xs font-bold uppercase tracking-wider ${isSelected ? styles.color : 'text-slate-500'}`}>
-                                        Grupo
-                                    </span>
-                                    <span className={`block font-bold text-sm md:text-lg leading-tight truncate ${isSelected ? 'text-slate-900' : 'text-slate-600'}`}>
-                                        {group.name}
-                                    </span>
-                                </div>
-                                {isSelected && (
-                                    <div className={`hidden md:block absolute bottom-0 left-0 right-0 h-1.5 rounded-b-[1.5rem] ${styles.bg.replace('/50', '/30 w-full')}`}></div>
-                                )}
-                            </button>
-                        );
+                            </div>
+                        )
                     })}
                 </div>
 
@@ -346,6 +408,7 @@ export default function ServiceManager({ groups, initialData }: ServiceManagerPr
             {selectedBeneficiary && (
                 <AttendanceModal
                     beneficiary={selectedBeneficiary}
+                    serviceDayId={serviceStatus.service?.id}
                     onClose={() => setSelectedBeneficiary(null)}
                     onSuccess={() => {
                         setSelectedBeneficiary(null);

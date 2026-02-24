@@ -9,23 +9,43 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 
 interface AttendanceModalProps {
     beneficiary: any;
+    serviceDayId?: number;
     onClose: () => void;
     onSuccess: () => void;
 }
 
-export default function AttendanceModal({ beneficiary, onClose, onSuccess }: AttendanceModalProps) {
+export default function AttendanceModal({ beneficiary, serviceDayId, onClose, onSuccess }: AttendanceModalProps) {
     const [activeTab, setActiveTab] = useState<'register' | 'history'>('register');
     const [loading, setLoading] = useState(false);
     const [historyData, setHistoryData] = useState<any>(null);
     const [formData, setFormData] = useState({
         receivedFood: true,
-        foodQuantity: 1, // Default 1 si marca que recibió
+        foodQuantity: 0, // Default 0 to avoid errors
         receivedClothes: false,
         clothesQuantity: 0,
         receivedMedical: false,
-        medicinesReceived: '',
+        medicinesReceived: '', // Legacy simple string
+        medicinesList: [] as { name: string, quantity: number }[], // New structured list
         signature: 'Firma Digital/Manual'
     });
+
+    // Nuevo medicamento input state
+    const [newMed, setNewMed] = useState({ name: '', quantity: 1 });
+
+    const addMedicine = () => {
+        if (!newMed.name.trim()) return;
+        setFormData({
+            ...formData,
+            medicinesList: [...formData.medicinesList, { ...newMed }]
+        });
+        setNewMed({ name: '', quantity: 1 });
+    };
+
+    const removeMedicine = (index: number) => {
+        const newList = [...formData.medicinesList];
+        newList.splice(index, 1);
+        setFormData({ ...formData, medicinesList: newList });
+    };
 
     // Cargar historial al abrir
     useEffect(() => {
@@ -44,10 +64,12 @@ export default function AttendanceModal({ beneficiary, onClose, onSuccess }: Att
         try {
             const result = await registerAttendance({
                 beneficiaryId: beneficiary.id,
+                serviceDayId: serviceDayId, // Pass serviceDayId
                 date: new Date(),
                 ...formData,
                 foodQuantity: Number(formData.foodQuantity),
-                clothesQuantity: Number(formData.clothesQuantity)
+                clothesQuantity: Number(formData.clothesQuantity),
+                medicinesDetail: JSON.stringify(formData.medicinesList) // Send structured data
             });
             if (result.success) onSuccess();
             else alert('Error al registrar asistencia');
@@ -136,7 +158,54 @@ export default function AttendanceModal({ beneficiary, onClose, onSuccess }: Att
                                         <span className="font-semibold text-slate-700">💊 Medicina / Salud</span>
                                     </label>
                                     {formData.receivedMedical && (
-                                        <Input label="Medicamentos" placeholder="Ej. Losartán, Vitaminas..." value={formData.medicinesReceived} onChange={(e) => setFormData({ ...formData, medicinesReceived: e.target.value })} />
+                                        <div className="space-y-3 mt-3">
+                                            {/* List of added medicines */}
+                                            {formData.medicinesList.length > 0 && (
+                                                <div className="bg-white/50 rounded-lg p-2 space-y-2">
+                                                    {formData.medicinesList.map((med, idx) => (
+                                                        <div key={idx} className="flex justify-between items-center text-sm bg-white p-2 rounded shadow-sm">
+                                                            <span><strong>{med.quantity}</strong> x {med.name}</span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeMedicine(idx)}
+                                                                className="text-red-500 hover:text-red-700 font-bold px-2"
+                                                            >
+                                                                ✕
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Add New Medicine */}
+                                            <div className="flex gap-2 items-end">
+                                                <div className="flex-1">
+                                                    <label className="text-xs font-bold text-slate-500 block mb-1">Nombre Medicamento</label>
+                                                    <Input
+                                                        placeholder="Ej. Acetaminofen"
+                                                        value={newMed.name}
+                                                        onChange={(e) => setNewMed({ ...newMed, name: e.target.value })}
+                                                    />
+                                                </div>
+                                                <div className="w-20">
+                                                    <label className="text-xs font-bold text-slate-500 block mb-1">Cant.</label>
+                                                    <Input
+                                                        type="number"
+                                                        min={1}
+                                                        value={newMed.quantity}
+                                                        onChange={(e) => setNewMed({ ...newMed, quantity: parseInt(e.target.value) || 1 })}
+                                                    />
+                                                </div>
+                                                <Button
+                                                    type="button"
+                                                    onClick={addMedicine}
+                                                    className="bg-green-600 hover:bg-green-700 text-white px-3"
+                                                >
+                                                    +
+                                                </Button>
+                                            </div>
+                                            <p className="text-xs text-slate-400">Agrega cada medicamento entregado a la lista.</p>
+                                        </div>
                                     )}
                                 </div>
                             </div>

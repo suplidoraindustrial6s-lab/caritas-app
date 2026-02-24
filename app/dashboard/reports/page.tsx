@@ -9,7 +9,9 @@ import {
 } from 'recharts';
 import { Button } from '@/app/components/ui/Button';
 
-const COLORS = ['#2563EB', '#059669', '#9333EA', '#DC2626', '#8884d8']; // Blue (Fe), Emerald (Esperanza), Purple (Caridad), Red (Amor)
+const COLORS = [
+    '#2563EB', '#059669', '#9333EA', '#DC2626', '#F59E0B', '#06B6D4', '#8B5CF6', '#EC4899', '#10B981', '#6366F1'
+]; // Extended palette
 const DEMO_COLORS = ['#2563EB', '#9333EA', '#059669']; // Blue, Purple, Emerald
 
 export default function ReportsPage() {
@@ -47,7 +49,7 @@ export default function ReportsPage() {
             if (!monthlyData[key]) {
                 monthlyData[key] = { name: key, food: 0, clothes: 0, medical: 0 };
             }
-            if (t.receivedFood) monthlyData[key].food++;
+            if (t.receivedFood) monthlyData[key].food += (t.foodQuantity || 1);
             if (t.receivedMedical) monthlyData[key].medical++;
             monthlyData[key].clothes += t.clothesQuantity;
         });
@@ -66,6 +68,33 @@ export default function ReportsPage() {
         { name: 'Mujeres', value: demographics.women },
         { name: 'Niños', value: demographics.children }
     ];
+
+    // Calculate percentages for Zones
+    const totalZoneBeneficiaries = zones?.reduce((acc: any, curr: any) => acc + curr.value, 0) || 0;
+    const zonesWithPct = zones?.map((z: any) => ({
+        ...z,
+        percentage: totalZoneBeneficiaries > 0 ? ((z.value / totalZoneBeneficiaries) * 100).toFixed(1) : 0
+    })).sort((a: any, b: any) => b.value - a.value); // Sort by count descending
+
+    const CustomTooltip = ({ active, payload, label }: any) => {
+        if (active && payload && payload.length) {
+            const data = payload[0].payload;
+            return (
+                <div className="bg-white p-3 rounded-xl shadow-lg border border-slate-100 text-xs">
+                    <p className="font-bold text-slate-800 mb-1">{data.name}</p>
+                    <div className="flex justify-between gap-4 text-slate-500">
+                        <span>Cantidad:</span>
+                        <span className="font-bold text-slate-800">{data.value}</span>
+                    </div>
+                    <div className="flex justify-between gap-4 text-slate-500">
+                        <span>Porcentaje:</span>
+                        <span className="font-bold text-blue-600">{data.percentage}%</span>
+                    </div>
+                </div>
+            );
+        }
+        return null;
+    };
 
     return (
         <div className="h-[calc(100vh-2rem)] flex flex-col gap-6 overflow-hidden p-2">
@@ -204,26 +233,27 @@ export default function ReportsPage() {
                     </div>
 
                     {/* ZONAS */}
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                        <h3 className="text-lg font-bold text-slate-800 mb-6">Zonas de Residencia</h3>
-                        <div className="h-[250px]">
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col">
+                        <h3 className="text-lg font-bold text-slate-800 mb-2">Zonas de Residencia</h3>
+                        <div className="flex-1 min-h-[400px]">
                             <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={zones}
-                                        cx="50%"
-                                        cy="50%"
-                                        outerRadius={80}
-                                        fill="#8884d8"
-                                        dataKey="value"
-                                        label={({ name }: any) => name}
-                                    >
-                                        {zones.map((entry: any, index: number) => (
+                                <BarChart layout="vertical" data={zonesWithPct} margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} />
+                                    <XAxis type="number" hide />
+                                    <YAxis
+                                        dataKey="name"
+                                        type="category"
+                                        width={120}
+                                        tick={{ fontSize: 11, fill: '#64748b', fontWeight: 500 }}
+                                        interval={0}
+                                    />
+                                    <Tooltip cursor={{ fill: '#f8fafc' }} content={<CustomTooltip />} />
+                                    <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={24}>
+                                        {zonesWithPct?.map((entry: any, index: number) => (
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
-                                    </Pie>
-                                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                                </PieChart>
+                                    </Bar>
+                                </BarChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
