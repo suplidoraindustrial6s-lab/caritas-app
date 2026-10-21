@@ -22,6 +22,8 @@ import {
     ArrowUpRight,
     ArrowDownRight,
     UserCheck,
+    ChevronDown,
+    ChevronUp,
 } from 'lucide-react';
 import {
     crearJornadaSaman,
@@ -69,6 +71,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
     const [showNewJornadaModal, setShowNewJornadaModal] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [mostrarIndicadoresMovil, setMostrarIndicadoresMovil] = useState(false);
 
     // Estado para crear nueva jornada con valores por defecto de la parroquia
     const [nuevaJornadaForm, setNuevaJornadaForm] = useState({
@@ -657,12 +660,26 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
             {/* 2. DASHBOARD DE 11 INDICADORES INSTITUCIONALES EN VIVO */}
             <div className="space-y-2.5">
                 <div className="flex items-center justify-between px-1">
-                    <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">
-                        📊 Estadísticas en Vivo de la Jornada (11 Indicadores Institucionales Cáritas)
-                    </h2>
-                    <span className="text-xs text-slate-400">Actualización en tiempo real</span>
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">
+                            📊 Estadísticas en Vivo (11 Indicadores)
+                        </h2>
+                        <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
+                            Tiempo real
+                        </span>
+                    </div>
+
+                    {/* Botón para alternar visibilidad en móviles/tablets para no saturar la pantalla de campo */}
+                    <button
+                        type="button"
+                        onClick={() => setMostrarIndicadoresMovil(!mostrarIndicadoresMovil)}
+                        className="md:hidden flex items-center gap-1.5 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
+                    >
+                        <span>{mostrarIndicadoresMovil ? 'Ocultar Resumen' : 'Ver 11 Indicadores'}</span>
+                        {mostrarIndicadoresMovil ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div className={`${mostrarIndicadoresMovil ? 'grid' : 'hidden md:grid'} grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 transition-all`}>
                     {tarjetasIndicadores.map((card) => {
                         const Icon = card.icono;
                         return (
@@ -750,7 +767,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
             {activeTab === 'ninos' && (
                 <div className="space-y-6">
                     {/* FORMULARIO DE CAPTURA RÁPIDA EN CAMPO - NIÑOS */}
-                    <form onSubmit={handleGuardarNino} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
+                    <form id="form-saman-ninos" onSubmit={handleGuardarNino} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-slate-100 pb-4">
                             <div>
                                 <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -913,6 +930,8 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                 </label>
                                 <input
                                     type="text"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
                                     required
                                     placeholder="Ej: 19530148 (solo números)"
                                     value={ninoForm.cedulaRepresentante}
@@ -994,14 +1013,30 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
 
                             <div>
                                 <label className="block text-xs font-bold text-slate-700 mb-1">Sexo *</label>
-                                <select
-                                    value={ninoForm.sexo}
-                                    onChange={(e) => setNinoForm({ ...ninoForm, sexo: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"
-                                >
-                                    <option value="FEMENINO">FEMENINO</option>
-                                    <option value="MASCULINO">MASCULINO</option>
-                                </select>
+                                <div className="grid grid-cols-2 gap-1.5">
+                                    <button
+                                        type="button"
+                                        onClick={() => setNinoForm({ ...ninoForm, sexo: 'FEMENINO' })}
+                                        className={`py-2 px-2 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 cursor-pointer ${
+                                            ninoForm.sexo === 'FEMENINO'
+                                                ? 'bg-pink-500 text-white border-pink-500 shadow-xs'
+                                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        <span>👧</span> Femenino
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setNinoForm({ ...ninoForm, sexo: 'MASCULINO' })}
+                                        className={`py-2 px-2 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 cursor-pointer ${
+                                            ninoForm.sexo === 'MASCULINO'
+                                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        <span>👦</span> Masculino
+                                    </button>
+                                </div>
                             </div>
 
                             <div>
@@ -1040,6 +1075,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                     <input
                                         type="number"
                                         step="0.01"
+                                        inputMode="decimal"
                                         required
                                         placeholder="Ej: 11.5"
                                         value={ninoForm.pesoKg}
@@ -1053,6 +1089,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                     <input
                                         type="number"
                                         step="0.1"
+                                        inputMode="decimal"
                                         required
                                         placeholder="Ej: 84.0"
                                         value={ninoForm.tallaCm}
@@ -1080,6 +1117,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                     <input
                                         type="number"
                                         step="0.1"
+                                        inputMode="decimal"
                                         placeholder="27 cm"
                                         value={ninoForm.longitudCabezaCm}
                                         onChange={(e) => setNinoForm({ ...ninoForm, longitudCabezaCm: e.target.value })}
@@ -1093,6 +1131,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                     <input
                                         type="number"
                                         step="0.1"
+                                        inputMode="decimal"
                                         required
                                         placeholder="Ej: 15.0"
                                         value={ninoForm.cBrazoCm}
@@ -1106,6 +1145,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                     <input
                                         type="number"
                                         step="0.01"
+                                        inputMode="decimal"
                                         required
                                         placeholder="Maventy OMS"
                                         value={ninoForm.zScore}
@@ -1117,26 +1157,50 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
 
                                 <div>
                                     <label className="block text-xs font-bold text-slate-700 mb-1">Edema</label>
-                                    <select
-                                        value={ninoForm.edema}
-                                        onChange={(e) => setNinoForm({ ...ninoForm, edema: e.target.value })}
-                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm"
-                                    >
-                                        <option value="NO">NO</option>
-                                        <option value="SI">SÍ</option>
-                                    </select>
+                                    <div className="grid grid-cols-2 gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => setNinoForm({ ...ninoForm, edema: 'NO' })}
+                                            className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                                                ninoForm.edema === 'NO' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            NO
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setNinoForm({ ...ninoForm, edema: 'SI' })}
+                                            className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                                                ninoForm.edema === 'SI' ? 'bg-red-600 text-white border-red-600 shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            SÍ
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div>
                                     <label className="block text-xs font-bold text-slate-700 mb-1">Desparasitado</label>
-                                    <select
-                                        value={ninoForm.desparasitado}
-                                        onChange={(e) => setNinoForm({ ...ninoForm, desparasitado: e.target.value })}
-                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm"
-                                    >
-                                        <option value="NO">NO</option>
-                                        <option value="SI">SÍ</option>
-                                    </select>
+                                    <div className="grid grid-cols-2 gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => setNinoForm({ ...ninoForm, desparasitado: 'NO' })}
+                                            className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                                                ninoForm.desparasitado === 'NO' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            NO
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setNinoForm({ ...ninoForm, desparasitado: 'SI' })}
+                                            className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                                                ninoForm.desparasitado === 'SI' ? 'bg-teal-600 text-white border-teal-600 shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            SÍ
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1252,7 +1316,8 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
+                        {/* VISTA ESCRITORIO / TABLET ANCHA: TABLA COMPLETA */}
+                        <div className="overflow-x-auto hidden md:block">
                             <table className="w-full text-left border-collapse text-xs">
                                 <thead>
                                     <tr className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-100">
@@ -1329,6 +1394,77 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* VISTA MÓVIL Y TABLET: TARJETAS COMPACTAS TÁCTILES */}
+                        <div className="block md:hidden divide-y divide-slate-100">
+                            {ninosFiltrados.length === 0 ? (
+                                <div className="p-6 text-center text-xs text-slate-400">
+                                    No hay niños registrados en esta jornada todavía.
+                                </div>
+                            ) : (
+                                ninosFiltrados.map((n: any, idx: number) => (
+                                    <div key={n.id} className="p-4 space-y-2.5 hover:bg-slate-50/60 transition-colors">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-6 h-6 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold flex items-center justify-center flex-none">
+                                                    {idx + 1}
+                                                </span>
+                                                <div>
+                                                    <h4 className="font-bold text-slate-900 text-sm leading-tight">
+                                                        {n.nombres} {n.apellidos}
+                                                    </h4>
+                                                    <p className="text-[11px] text-slate-500 mt-0.5">
+                                                        {n.sexo === 'FEMENINO' ? '👧' : '👦'} {formatearEdadLegible(n.edadMeses)} ({n.rangoEdad})
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border flex-none ${obtenerEstiloEstado(n.estadoNutricional)}`}>
+                                                {n.estadoNutricional}
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-4 gap-1.5 bg-slate-50 p-2.5 rounded-xl text-center">
+                                            <div>
+                                                <span className="text-[9px] uppercase font-bold text-slate-400 block">Peso</span>
+                                                <span className="text-xs font-bold text-slate-800">{n.pesoKg} kg</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-[9px] uppercase font-bold text-slate-400 block">Talla</span>
+                                                <span className="text-xs font-bold text-slate-800">{n.tallaCm} cm</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-[9px] uppercase font-bold text-slate-400 block">CBI</span>
+                                                <span className="text-xs font-bold text-primary">{n.cBrazoCm} cm</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-[9px] uppercase font-bold text-slate-400 block">Z-Score</span>
+                                                <span className="text-xs font-bold text-slate-900">{n.zScore}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+                                            <div className="truncate pr-2">
+                                                <span className="font-semibold text-slate-700">C.I. Rep:</span> {n.cedulaRepresentante} ({n.parentesco})
+                                                {n.tratamientoProtocolo && ` • ${n.tratamientoProtocolo}`}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={async () => {
+                                                    if (confirm(`¿Eliminar el registro de ${n.nombres} ${n.apellidos}?`)) {
+                                                        await eliminarRegistroSamanNino(n.id);
+                                                        router.refresh();
+                                                    }
+                                                }}
+                                                className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg transition-colors flex-none"
+                                                title="Eliminar"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
@@ -1338,7 +1474,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
             {/* ===================================================================== */}
             {activeTab === 'mel' && (
                 <div className="space-y-6">
-                    <form onSubmit={handleGuardarMel} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
+                    <form id="form-saman-mel" onSubmit={handleGuardarMel} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-slate-100 pb-4">
                             <div>
                                 <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -1424,8 +1560,10 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                 <label className="block text-xs font-bold text-slate-700 mb-1">Cédula de Identidad *</label>
                                 <input
                                     type="text"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
                                     required
-                                    placeholder="Ej: 28479221"
+                                    placeholder="Ej: 28479221 (solo números)"
                                     value={melForm.cedula}
                                     onChange={(e) => setMelForm({ ...melForm, cedula: e.target.value })}
                                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold bg-slate-50/50"
@@ -1465,21 +1603,38 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">Condición (MEL)</label>
-                                <select
-                                    value={melForm.estadoEmbarazoLactancia}
-                                    onChange={(e) => setMelForm({ ...melForm, estadoEmbarazoLactancia: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"
-                                >
-                                    <option value="EMBARAZADA">EMBARAZADA</option>
-                                    <option value="LACTANTE">LACTANTE</option>
-                                </select>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Condición (MEL) *</label>
+                                <div className="grid grid-cols-2 gap-1.5">
+                                    <button
+                                        type="button"
+                                        onClick={() => setMelForm({ ...melForm, estadoEmbarazoLactancia: 'EMBARAZADA' })}
+                                        className={`py-2 px-2 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 cursor-pointer ${
+                                            melForm.estadoEmbarazoLactancia === 'EMBARAZADA'
+                                                ? 'bg-pink-600 text-white border-pink-600 shadow-xs'
+                                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        <span>🤰</span> Embarazada
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMelForm({ ...melForm, estadoEmbarazoLactancia: 'LACTANTE' })}
+                                        className={`py-2 px-2 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 cursor-pointer ${
+                                            melForm.estadoEmbarazoLactancia === 'LACTANTE'
+                                                ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        <span>🤱</span> Lactante
+                                    </button>
+                                </div>
                             </div>
 
                             <div>
                                 <label className="block text-xs font-bold text-slate-700 mb-1">Semana de Gestación</label>
                                 <input
                                     type="number"
+                                    inputMode="numeric"
                                     placeholder="Ej: 15 (si está embarazada)"
                                     value={melForm.semanaGestacion}
                                     onChange={(e) => setMelForm({ ...melForm, semanaGestacion: e.target.value })}
@@ -1503,14 +1658,26 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
 
                             <div>
                                 <label className="block text-xs font-bold text-slate-700 mb-1">Desparasitada</label>
-                                <select
-                                    value={melForm.desparasitada}
-                                    onChange={(e) => setMelForm({ ...melForm, desparasitada: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"
-                                >
-                                    <option value="NO">NO</option>
-                                    <option value="SI">SÍ</option>
-                                </select>
+                                <div className="grid grid-cols-2 gap-1.5">
+                                    <button
+                                        type="button"
+                                        onClick={() => setMelForm({ ...melForm, desparasitada: 'NO' })}
+                                        className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                                            melForm.desparasitada === 'NO' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        NO
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMelForm({ ...melForm, desparasitada: 'SI' })}
+                                        className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                                            melForm.desparasitada === 'SI' ? 'bg-teal-600 text-white border-teal-600 shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        SÍ
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -1521,6 +1688,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                 <input
                                     type="number"
                                     step="0.1"
+                                    inputMode="decimal"
                                     required
                                     placeholder="Ej: 64.5"
                                     value={melForm.pesoKg}
@@ -1533,6 +1701,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                 <input
                                     type="number"
                                     step="0.1"
+                                    inputMode="decimal"
                                     required
                                     placeholder="Ej: 160.5"
                                     value={melForm.tallaCm}
@@ -1545,6 +1714,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                 <input
                                     type="number"
                                     step="0.1"
+                                    inputMode="decimal"
                                     required
                                     placeholder="≤ 22.1 Bajo Peso"
                                     value={melForm.cBrazoCm}
@@ -1638,7 +1808,8 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
+                        {/* VISTA ESCRITORIO / TABLET ANCHA: TABLA COMPLETA */}
+                        <div className="overflow-x-auto hidden md:block">
                             <table className="w-full text-left border-collapse text-xs">
                                 <thead>
                                     <tr className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-100">
@@ -1711,9 +1882,120 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* VISTA MÓVIL Y TABLET: TARJETAS COMPACTAS TÁCTILES MEL */}
+                        <div className="block md:hidden divide-y divide-slate-100">
+                            {melFiltradas.length === 0 ? (
+                                <div className="p-6 text-center text-xs text-slate-400">
+                                    No hay mujeres embarazadas o lactantes registradas en esta jornada todavía.
+                                </div>
+                            ) : (
+                                melFiltradas.map((m: any, idx: number) => (
+                                    <div key={m.id} className="p-4 space-y-2.5 hover:bg-slate-50/60 transition-colors">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-6 h-6 rounded-lg bg-pink-100 text-pink-700 text-xs font-bold flex items-center justify-center flex-none">
+                                                    {idx + 1}
+                                                </span>
+                                                <div>
+                                                    <h4 className="font-bold text-slate-900 text-sm leading-tight">
+                                                        {m.nombre} {m.apellido}
+                                                    </h4>
+                                                    <p className="text-[11px] text-slate-500 mt-0.5">
+                                                        C.I. {m.cedula} • <span className="font-semibold text-pink-700">{m.estadoEmbarazoLactancia}</span>
+                                                        {m.semanaGestacion && ` (${m.semanaGestacion} sem)`}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border flex-none ${obtenerEstiloEstado(m.clasificacionNutricional)}`}>
+                                                {m.clasificacionNutricional}
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-4 gap-1.5 bg-slate-50 p-2.5 rounded-xl text-center">
+                                            <div>
+                                                <span className="text-[9px] uppercase font-bold text-slate-400 block">Peso</span>
+                                                <span className="text-xs font-bold text-slate-800">{m.pesoKg} kg</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-[9px] uppercase font-bold text-slate-400 block">Talla</span>
+                                                <span className="text-xs font-bold text-slate-800">{m.tallaCm} cm</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-[9px] uppercase font-bold text-slate-400 block">PB</span>
+                                                <span className="text-xs font-bold text-primary">{m.cBrazoCm} cm</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-[9px] uppercase font-bold text-slate-400 block">IMC</span>
+                                                <span className="text-xs font-bold text-slate-900">{Number(m.imc).toFixed(1)}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+                                            <div className="truncate pr-2">
+                                                <span className="font-semibold text-slate-700">Tratamiento:</span> {m.tratamiento} ({m.cantidad})
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={async () => {
+                                                    if (confirm(`¿Eliminar el registro de ${m.nombre} ${m.apellido}?`)) {
+                                                        await eliminarRegistroSamanEmbarazada(m.id);
+                                                        router.refresh();
+                                                    }
+                                                }}
+                                                className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg transition-colors flex-none"
+                                                title="Eliminar"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
+
+            {/* 4. BARRA DE ACCIÓN FIJA INFERIOR PARA TELÉFONOS Y TABLETS (STICKY MOBILE BAR) */}
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-2.5 shadow-2xl flex items-center justify-between gap-3">
+                <div className="flex flex-col min-w-0">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                        {activeTab === 'ninos' ? 'Diagnóstico Z-Score' : 'Evaluación MEL'}
+                    </span>
+                    <div className="flex items-center gap-1.5 truncate">
+                        {activeTab === 'ninos' ? (
+                            <>
+                                <span className="text-xs font-black text-slate-900">
+                                    Z: {ninoForm.zScore || '0.00'}
+                                </span>
+                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border truncate ${obtenerEstiloEstado(estadoNutricionalNinoCalc)}`}>
+                                    {estadoNutricionalNinoCalc}
+                                </span>
+                            </>
+                        ) : (
+                            <>
+                                <span className="text-xs font-black text-slate-900">
+                                    IMC: {imcMelCalculado || '0.0'}
+                                </span>
+                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border truncate ${obtenerEstiloEstado(clasificacionImcMelCalc)}`}>
+                                    {clasificacionImcMelCalc}
+                                </span>
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                <button
+                    type="submit"
+                    form={activeTab === 'ninos' ? 'form-saman-ninos' : 'form-saman-mel'}
+                    disabled={isSubmitting}
+                    className="bg-primary text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-md shadow-primary/20 hover:bg-primary/90 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 flex-none"
+                >
+                    <Plus className="w-4 h-4" />
+                    <span>{isSubmitting ? 'Guardando...' : activeTab === 'ninos' ? 'Guardar Niño/a' : 'Guardar MEL'}</span>
+                </button>
+            </div>
 
             {/* MODAL PARA CREAR NUEVA JORNADA SAMÁN */}
             {showNewJornadaModal && (
