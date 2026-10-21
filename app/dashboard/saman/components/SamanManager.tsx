@@ -1,0 +1,1815 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+    Baby,
+    HeartPulse,
+    CheckCircle2,
+    AlertTriangle,
+    AlertOctagon,
+    ShieldAlert,
+    Pill,
+    Package,
+    Download,
+    Plus,
+    Search,
+    History,
+    Calendar,
+    MapPin,
+    Trash2,
+    Sparkles,
+    ArrowUpRight,
+    ArrowDownRight,
+    UserCheck,
+} from 'lucide-react';
+import {
+    crearJornadaSaman,
+    buscarHistorialNinoPorCedula,
+    buscarHistorialMelPorCedula,
+    registrarSamanNino,
+    registrarSamanEmbarazada,
+    eliminarRegistroSamanNino,
+    eliminarRegistroSamanEmbarazada,
+} from '@/app/actions/saman';
+import {
+    calcularEdadMeses,
+    formatearEdadLegible,
+    calcularRangoEdad,
+    clasificarPbNino,
+    estimarZScorePesoTalla,
+    clasificarZScoreNino,
+    sugerirTratamientoNino,
+    calcularImcMel,
+    clasificarImcMel,
+    clasificarPbMel,
+} from '@/app/lib/saman-calculations';
+
+interface SamanManagerProps {
+    jornadas: any[];
+    jornadaActiva: any;
+    indicadores: {
+        totalNinos: number;
+        totalAdecuados: number;
+        totalRN: number;
+        totalDAM: number;
+        totalDAS: number;
+        totalMicronutrientes: number;
+        totalPlumpyAmarillo: number;
+        totalPlumpyRojo: number;
+        totalPlumpyMum: number;
+        totalMel: number;
+        totalMelBajoPeso: number;
+    };
+}
+
+export default function SamanManager({ jornadas, jornadaActiva, indicadores }: SamanManagerProps) {
+    const router = useRouter();
+    const [activeTab, setActiveTab] = useState<'ninos' | 'mel'>('ninos');
+    const [showNewJornadaModal, setShowNewJornadaModal] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    // Estado para crear nueva jornada con valores por defecto de la parroquia
+    const [nuevaJornadaForm, setNuevaJornadaForm] = useState({
+        fecha: new Date().toISOString().slice(0, 10),
+        diocesis: jornadaActiva?.diocesis || 'MARACAY',
+        estado: jornadaActiva?.estado || 'ARAGUA',
+        municipio: jornadaActiva?.municipio || 'MBI',
+        parroquiaCivil: jornadaActiva?.parroquiaCivil || 'EL LIMÓN',
+        parroquiaEclesial: jornadaActiva?.parroquiaEclesial || 'LA MILAGROSA',
+        centro: jornadaActiva?.centro || 'MARACAY - EL LIMÓN',
+        comunidad: jornadaActiva?.comunidad || 'TEJERÍAS',
+    });
+
+    // ==========================================
+    // ESTADO FORMULARIO 1: SAMÁN NIÑOS Y NIÑAS
+    // ==========================================
+    const [ninoForm, setNinoForm] = useState({
+        cedulaRepresentante: '',
+        edadRepresentante: 'Entre 18 - 49 años',
+        parentesco: 'MADRE',
+        grupoEtnico: 'Mestizo',
+        nombres: '',
+        apellidos: '',
+        sexo: 'FEMENINO',
+        fechaNacimiento: '',
+        tipoIngreso: 'DIAGNOSTICO INICIAL',
+        nroControl: 0,
+        discapacidad: 'NO',
+        detalleDiscapacidad: '',
+        edema: 'NO',
+        hemoglobina: '',
+        posicionMedida: 'AUTO',
+        longitudCabezaCm: '27.0',
+        cBrazoCm: '',
+        tallaCm: '',
+        pesoKg: '',
+        zScore: '',
+        zScoreManual: false,
+        desparasitado: 'NO',
+        micronutrientes: true,
+        cantMicronutrientes: 30,
+        plumpyAmarillo: false,
+        cantPlumpyAmarillo: 0,
+        plumpyRojo: false,
+        cantPlumpyRojo: 0,
+        plumpyMum: false,
+        cantPlumpyMum: 0,
+        observaciones: '',
+    });
+
+    // Historial evolutivo encontrado para el representante
+    const [historialNinos, setHistorialNinos] = useState<any[]>([]);
+    const [ninoHistoricoSeleccionado, setNinoHistoricoSeleccionado] = useState<any | null>(null);
+    const [buscandoHistorialNino, setBuscandoHistorialNino] = useState(false);
+
+    // ==========================================
+    // ESTADO FORMULARIO 2: SAMÁN EMBARAZADAS/LACTANTES (MEL)
+    // ==========================================
+    const [melForm, setMelForm] = useState({
+        cedula: '',
+        nombre: '',
+        apellido: '',
+        fechaNacimiento: '',
+        grupoEtnico: 'Mestizo',
+        tipoIngreso: 'DIAGNOSTICO INICIAL',
+        estadoEmbarazoLactancia: 'EMBARAZADA',
+        semanaGestacion: '',
+        edema: 'No',
+        pesoKg: '',
+        tallaCm: '',
+        cBrazoCm: '',
+        desparasitada: 'NO',
+        tratamiento: 'Hierro+Ácido Fólico',
+        cantidad: 30,
+        plumpyMum: false,
+        cantPlumpyMum: 0,
+        micronutrientes: true,
+        cantMicronutrientes: 30,
+        observaciones: '',
+    });
+
+    const [historialMel, setHistorialMel] = useState<any | null>(null);
+    const [buscandoHistorialMel, setBuscandoHistorialMel] = useState(false);
+
+    // Búsqueda automática en tiempo real de historial por Cédula (Niños)
+    useEffect(() => {
+        const cedula = ninoForm.cedulaRepresentante.replace(/\D/g, '').trim();
+        if (cedula.length < 5) {
+            setHistorialNinos([]);
+            setNinoHistoricoSeleccionado(null);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            setBuscandoHistorialNino(true);
+            const res = await buscarHistorialNinoPorCedula(cedula);
+            if (res.success && res.data && res.data.length > 0) {
+                setHistorialNinos(res.data);
+                setNinoHistoricoSeleccionado(res.data[0]);
+            } else {
+                setHistorialNinos([]);
+                setNinoHistoricoSeleccionado(null);
+            }
+            setBuscandoHistorialNino(false);
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [ninoForm.cedulaRepresentante]);
+
+    // Búsqueda automática en tiempo real de historial por Cédula (MEL)
+    useEffect(() => {
+        const cedula = melForm.cedula.replace(/\D/g, '').trim();
+        if (cedula.length < 5) {
+            setHistorialMel(null);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            setBuscandoHistorialMel(true);
+            const res = await buscarHistorialMelPorCedula(cedula);
+            if (res.success && res.data) {
+                setHistorialMel(res.data);
+            } else {
+                setHistorialMel(null);
+            }
+            setBuscandoHistorialMel(false);
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [melForm.cedula]);
+
+    // Cálculos automáticos en tiempo real para Niños
+    const edadMesesCalculada = ninoForm.fechaNacimiento
+        ? calcularEdadMeses(ninoForm.fechaNacimiento, jornadaActiva?.fecha || new Date())
+        : 0;
+    const rangoEdadCalculado = calcularRangoEdad(edadMesesCalculada);
+    const clasificacionPbNinoCalc = clasificarPbNino(Number(ninoForm.cBrazoCm));
+
+    // Recalcular Z-Score y sugerencia de tratamiento cuando cambian peso, talla, sexo, fechaNacimiento o posicionMedida
+    useEffect(() => {
+        const peso = Number(ninoForm.pesoKg);
+        const talla = Number(ninoForm.tallaCm);
+        if (!ninoForm.zScoreManual && peso > 0 && talla >= 40 && ninoForm.fechaNacimiento) {
+            const zEstimado = estimarZScorePesoTalla(
+                peso,
+                talla,
+                ninoForm.sexo,
+                ninoForm.fechaNacimiento,
+                jornadaActiva?.fecha || new Date(),
+                ninoForm.posicionMedida as any
+            );
+            const sugerencia = sugerirTratamientoNino(zEstimado, edadMesesCalculada);
+            setNinoForm((prev) => ({
+                ...prev,
+                zScore: String(zEstimado),
+                micronutrientes: sugerencia.micronutrientes,
+                cantMicronutrientes: sugerencia.cantMicronutrientes,
+                plumpyAmarillo: sugerencia.plumpyAmarillo,
+                cantPlumpyAmarillo: sugerencia.cantPlumpyAmarillo,
+                plumpyRojo: sugerencia.plumpyRojo,
+                cantPlumpyRojo: sugerencia.cantPlumpyRojo,
+            }));
+        }
+    }, [ninoForm.pesoKg, ninoForm.tallaCm, ninoForm.sexo, ninoForm.fechaNacimiento, ninoForm.posicionMedida, edadMesesCalculada, ninoForm.zScoreManual, jornadaActiva?.fecha]);
+
+    const zScoreNum = ninoForm.zScore !== '' ? Number(ninoForm.zScore) : 0;
+    const estadoNutricionalNinoCalc = clasificarZScoreNino(zScoreNum, edadMesesCalculada);
+
+    // Cálculos automáticos en tiempo real para MEL
+    const imcMelCalculado = calcularImcMel(Number(melForm.pesoKg), Number(melForm.tallaCm));
+    const clasificacionImcMelCalc = clasificarImcMel(imcMelCalculado);
+    const clasificacionPbMelCalc = clasificarPbMel(Number(melForm.cBrazoCm));
+    const edadAniosMelCalculada = melForm.fechaNacimiento
+        ? Number((calcularEdadMeses(melForm.fechaNacimiento, jornadaActiva?.fecha || new Date()) / 12).toFixed(1))
+        : 0;
+
+    // Función para autocompletar datos del niño desde su historial
+    const cargarDatosNinoHistorico = (hist: any) => {
+        setNinoHistoricoSeleccionado(hist);
+        const fechaNacStr = hist.fechaNacimiento
+            ? new Date(hist.fechaNacimiento).toISOString().slice(0, 10)
+            : '';
+        setNinoForm((prev) => ({
+            ...prev,
+            edadRepresentante: hist.edadRepresentante || prev.edadRepresentante,
+            parentesco: hist.parentesco || prev.parentesco,
+            grupoEtnico: hist.grupoEtnico || prev.grupoEtnico,
+            nombres: hist.nombres || '',
+            apellidos: hist.apellidos || '',
+            sexo: hist.sexo || 'FEMENINO',
+            fechaNacimiento: fechaNacStr,
+            tipoIngreso: 'MONITOREO',
+            nroControl: (Number(hist.nroControlPrevio) || 0) + 1,
+            discapacidad: hist.discapacidad || 'NO',
+            detalleDiscapacidad: hist.detalleDiscapacidad || '',
+        }));
+    };
+
+    // Función para autocompletar datos de la madre/embarazada desde su historial
+    const cargarDatosMelHistorico = (hist: any) => {
+        const fechaNacStr = hist.fechaNacimiento
+            ? new Date(hist.fechaNacimiento).toISOString().slice(0, 10)
+            : '';
+        setMelForm((prev) => ({
+            ...prev,
+            nombre: hist.nombre || '',
+            apellido: hist.apellido || '',
+            fechaNacimiento: fechaNacStr,
+            grupoEtnico: hist.grupoEtnico || 'Mestizo',
+            tipoIngreso: 'MONITOREO',
+            estadoEmbarazoLactancia: hist.estadoEmbarazoLactancia || 'EMBARAZADA',
+            semanaGestacion: hist.semanaGestacion ? String(hist.semanaGestacion + 4) : '',
+            tallaCm: hist.tallaCm ? String(hist.tallaCm) : prev.tallaCm,
+        }));
+    };
+
+    // Guardar nueva jornada SAMÁN
+    const handleCrearJornada = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        const res = await crearJornadaSaman(nuevaJornadaForm);
+        setIsSubmitting(false);
+        if (res.success && res.data) {
+            setShowNewJornadaModal(false);
+            router.push(`/dashboard/saman?jornadaId=${res.data.id}`);
+            router.refresh();
+        } else {
+            alert(res.error || 'Error al crear la jornada');
+        }
+    };
+
+    // Guardar evaluación de Niño/a
+    const handleGuardarNino = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!ninoForm.cedulaRepresentante || !ninoForm.nombres || !ninoForm.apellidos || !ninoForm.fechaNacimiento) {
+            alert('Por favor completa los datos del representante y del niño/a.');
+            return;
+        }
+        setIsSubmitting(true);
+        const res = await registrarSamanNino({
+            ...ninoForm,
+            jornadaId: jornadaActiva.id,
+            estadoNutricional: estadoNutricionalNinoCalc,
+        });
+        setIsSubmitting(false);
+
+        if (res.success) {
+            // Limpiar campos del niño manteniendo cédula por si el representante tiene otro hijo, o limpiar todo
+            setNinoForm({
+                cedulaRepresentante: '',
+                edadRepresentante: 'Entre 18 - 49 años',
+                parentesco: 'MADRE',
+                grupoEtnico: 'Mestizo',
+                nombres: '',
+                apellidos: '',
+                sexo: 'FEMENINO',
+                fechaNacimiento: '',
+                tipoIngreso: 'DIAGNOSTICO INICIAL',
+                nroControl: 0,
+                discapacidad: 'NO',
+                detalleDiscapacidad: '',
+                edema: 'NO',
+                hemoglobina: '',
+                posicionMedida: 'AUTO',
+                longitudCabezaCm: '27.0',
+                cBrazoCm: '',
+                tallaCm: '',
+                pesoKg: '',
+                zScore: '',
+                zScoreManual: false,
+                desparasitado: 'NO',
+                micronutrientes: true,
+                cantMicronutrientes: 30,
+                plumpyAmarillo: false,
+                cantPlumpyAmarillo: 0,
+                plumpyRojo: false,
+                cantPlumpyRojo: 0,
+                plumpyMum: false,
+                cantPlumpyMum: 0,
+                observaciones: '',
+            });
+            setHistorialNinos([]);
+            setNinoHistoricoSeleccionado(null);
+            router.refresh();
+        } else {
+            alert(res.error || 'Error al guardar');
+        }
+    };
+
+    // Guardar evaluación MEL
+    const handleGuardarMel = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!melForm.cedula || !melForm.nombre || !melForm.apellido || !melForm.fechaNacimiento) {
+            alert('Por favor completa los datos de identificación de la paciente.');
+            return;
+        }
+        setIsSubmitting(true);
+        const res = await registrarSamanEmbarazada({
+            ...melForm,
+            jornadaId: jornadaActiva.id,
+            clasificacionNutricional: clasificacionImcMelCalc,
+            clasificacionPb: clasificacionPbMelCalc,
+        });
+        setIsSubmitting(false);
+
+        if (res.success) {
+            setMelForm({
+                cedula: '',
+                nombre: '',
+                apellido: '',
+                fechaNacimiento: '',
+                grupoEtnico: 'Mestizo',
+                tipoIngreso: 'DIAGNOSTICO INICIAL',
+                estadoEmbarazoLactancia: 'EMBARAZADA',
+                semanaGestacion: '',
+                edema: 'No',
+                pesoKg: '',
+                tallaCm: '',
+                cBrazoCm: '',
+                desparasitada: 'NO',
+                tratamiento: 'Hierro+Ácido Fólico',
+                cantidad: 30,
+                plumpyMum: false,
+                cantPlumpyMum: 0,
+                micronutrientes: true,
+                cantMicronutrientes: 30,
+                observaciones: '',
+            });
+            setHistorialMel(null);
+            router.refresh();
+        } else {
+            alert(res.error || 'Error al guardar');
+        }
+    };
+
+    // Colores de insignia según estado nutricional
+    const obtenerEstiloEstado = (estado: string) => {
+        const lower = (estado || '').toLowerCase();
+        if (lower.includes('severa')) {
+            return 'bg-red-100 text-red-700 border-red-200';
+        }
+        if (lower.includes('moderada') || lower.includes('bajo')) {
+            return 'bg-orange-100 text-orange-700 border-orange-200';
+        }
+        if (lower.includes('riesgo')) {
+            return 'bg-amber-100 text-amber-700 border-amber-200';
+        }
+        return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+    };
+
+    const ninosFiltrados = (jornadaActiva?.ninos || []).filter((n: any) => {
+        const q = searchTerm.toLowerCase();
+        return (
+            n.nombres.toLowerCase().includes(q) ||
+            n.apellidos.toLowerCase().includes(q) ||
+            n.cedulaRepresentante.includes(q)
+        );
+    });
+
+    const melFiltradas = (jornadaActiva?.embarazadas || []).filter((m: any) => {
+        const q = searchTerm.toLowerCase();
+        return (
+            m.nombre.toLowerCase().includes(q) ||
+            m.apellido.toLowerCase().includes(q) ||
+            m.cedula.includes(q)
+        );
+    });
+
+    // Configuración de las 11 tarjetas de indicadores institucionales
+    const tarjetasIndicadores = [
+        {
+            id: 1,
+            titulo: 'Total NN Atendidos',
+            subtitulo: 'Niños y Niñas evaluados',
+            valor: indicadores.totalNinos,
+            icono: Baby,
+            bg: 'bg-blue-50',
+            text: 'text-blue-600',
+            border: 'border-blue-100',
+            tag: '1. NN',
+        },
+        {
+            id: 2,
+            titulo: 'Niños Adecuados',
+            subtitulo: 'Z-Score ≥ -0,99',
+            valor: indicadores.totalAdecuados,
+            icono: CheckCircle2,
+            bg: 'bg-emerald-50',
+            text: 'text-emerald-600',
+            border: 'border-emerald-100',
+            tag: '2. Normal',
+        },
+        {
+            id: 3,
+            titulo: 'Riesgo Nutricional (RN)',
+            subtitulo: 'Z-Score -1 a -2 (< 2 años)',
+            valor: indicadores.totalRN,
+            icono: AlertTriangle,
+            bg: 'bg-amber-50',
+            text: 'text-amber-600',
+            border: 'border-amber-100',
+            tag: '3. Alerta RN',
+        },
+        {
+            id: 4,
+            titulo: 'Niños DAM',
+            subtitulo: 'Desnutrición Aguda Moderada',
+            valor: indicadores.totalDAM,
+            icono: AlertOctagon,
+            bg: 'bg-orange-50',
+            text: 'text-orange-600',
+            border: 'border-orange-100',
+            tag: '4. DAM (-2,01 a -3)',
+        },
+        {
+            id: 5,
+            titulo: 'Niños DAS',
+            subtitulo: 'Desnutrición Aguda Severa',
+            valor: indicadores.totalDAS,
+            icono: ShieldAlert,
+            bg: 'bg-red-50',
+            text: 'text-red-600',
+            border: 'border-red-100',
+            tag: '5. DAS (≤ -3,01)',
+        },
+        {
+            id: 6,
+            titulo: 'Micronutrientes',
+            subtitulo: 'Sobres / unidades entregadas',
+            valor: indicadores.totalMicronutrientes,
+            icono: Pill,
+            bg: 'bg-teal-50',
+            text: 'text-teal-600',
+            border: 'border-teal-100',
+            tag: '6. Vitaminas',
+        },
+        {
+            id: 7,
+            titulo: 'Plumpy Amarillo',
+            subtitulo: 'Plumpy DOZ (6-23 meses)',
+            valor: indicadores.totalPlumpyAmarillo,
+            icono: Package,
+            bg: 'bg-yellow-50',
+            text: 'text-yellow-600',
+            border: 'border-yellow-100',
+            tag: '7. LNS-MQ',
+        },
+        {
+            id: 8,
+            titulo: 'Plumpy Rojo',
+            subtitulo: 'Plumpy NUT (DAM / DAS)',
+            valor: indicadores.totalPlumpyRojo,
+            icono: Package,
+            bg: 'bg-rose-50',
+            text: 'text-rose-600',
+            border: 'border-rose-100',
+            tag: '8. RUTF',
+        },
+        {
+            id: 9,
+            titulo: 'Plumpy Mum',
+            subtitulo: 'Suplemento para MEL',
+            valor: indicadores.totalPlumpyMum,
+            icono: Sparkles,
+            bg: 'bg-purple-50',
+            text: 'text-purple-600',
+            border: 'border-purple-100',
+            tag: '9. Plumpy Mum',
+        },
+        {
+            id: 10,
+            titulo: 'Total MEL Atendidas',
+            subtitulo: 'Embarazadas y Lactantes',
+            valor: indicadores.totalMel,
+            icono: HeartPulse,
+            bg: 'bg-pink-50',
+            text: 'text-pink-600',
+            border: 'border-pink-100',
+            tag: '10. MEL',
+        },
+        {
+            id: 11,
+            titulo: 'MEL Bajo Peso',
+            subtitulo: 'PB ≤ 22,1 cm o IMC < 18,5',
+            valor: indicadores.totalMelBajoPeso,
+            icono: AlertTriangle,
+            bg: 'bg-red-50',
+            text: 'text-red-600',
+            border: 'border-red-100',
+            tag: '11. Déficit MEL',
+        },
+    ];
+
+    return (
+        <div className="space-y-6 pb-16">
+            {/* 1. CABECERA INSTITUCIONAL Y SELECTOR DE JORNADA */}
+            <div className="bg-white rounded-3xl p-5 md:p-6 shadow-sm border border-slate-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2.5">
+                        <span className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shadow-xs">
+                            🌱
+                        </span>
+                        <div>
+                            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+                                Programa Nutricional SAMÁN
+                            </h1>
+                            <p className="text-xs md:text-sm text-slate-500 font-medium">
+                                Sistema de Alerta, Monitoreo y Atención en Nutrición (Niños/as y MEL)
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                    {/* Selector de Jornada */}
+                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2">
+                        <Calendar className="w-4 h-4 text-primary" />
+                        <select
+                            value={jornadaActiva?.id || ''}
+                            onChange={(e) => router.push(`/dashboard/saman?jornadaId=${e.target.value}`)}
+                            className="bg-transparent text-sm font-semibold text-slate-800 focus:outline-none cursor-pointer"
+                        >
+                            {jornadas.map((j: any) => (
+                                <option key={j.id} value={j.id}>
+                                    {new Date(j.fecha).toLocaleDateString('es-VE', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric',
+                                    })}{' '}
+                                    — {j.comunidad} ({j._count?.ninos || 0} NN / {j._count?.embarazadas || 0} MEL)
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Botón Nueva Jornada */}
+                    <button
+                        type="button"
+                        onClick={() => setShowNewJornadaModal(true)}
+                        className="bg-slate-900 text-white px-4 py-2.5 rounded-2xl text-sm font-semibold shadow-md shadow-slate-900/15 hover:bg-slate-800 transition-all flex items-center gap-2 cursor-pointer"
+                    >
+                        <Plus className="w-4 h-4" />
+                        <span>Nueva Jornada</span>
+                    </button>
+
+                    {/* Botón Exportar al Excel Oficial de Cáritas */}
+                    <a
+                        href={`/api/saman/export?jornadaId=${jornadaActiva?.id}`}
+                        className="bg-emerald-600 text-white px-4 py-2.5 rounded-2xl text-sm font-semibold shadow-md shadow-emerald-600/20 hover:bg-emerald-700 transition-all flex items-center gap-2"
+                    >
+                        <Download className="w-4 h-4" />
+                        <span>Exportar Excel Oficial (.xlsx)</span>
+                    </a>
+                </div>
+            </div>
+
+            {/* BARRA INFORMATIVA DE DATOS FIJOS DE LA JORNADA ACTIVA */}
+            <div className="bg-white rounded-2xl px-5 py-3.5 shadow-xs border border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
+                <div className="flex flex-wrap items-center gap-4">
+                    <span className="flex items-center gap-1.5 font-semibold text-slate-800">
+                        <MapPin className="w-4 h-4 text-primary" />
+                        Diócesis: <strong className="text-primary">{jornadaActiva?.diocesis}</strong>
+                    </span>
+                    <span>•</span>
+                    <span>
+                        Estado/Mun: <strong>{jornadaActiva?.estado} / {jornadaActiva?.municipio}</strong>
+                    </span>
+                    <span>•</span>
+                    <span>
+                        Parroquia Civil: <strong>{jornadaActiva?.parroquiaCivil}</strong>
+                    </span>
+                    <span>•</span>
+                    <span>
+                        Parroquia Eclesial: <strong className="text-secondary">{jornadaActiva?.parroquiaEclesial}</strong>
+                    </span>
+                    <span>•</span>
+                    <span>
+                        Sector/Comunidad: <strong className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-lg border border-amber-200">{jornadaActiva?.comunidad}</strong>
+                    </span>
+                </div>
+                <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Jornada Activa • {new Date(jornadaActiva?.fecha).toLocaleDateString('es-VE')}
+                </span>
+            </div>
+
+            {/* 2. DASHBOARD DE 11 INDICADORES INSTITUCIONALES EN VIVO */}
+            <div className="space-y-2.5">
+                <div className="flex items-center justify-between px-1">
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">
+                        📊 Estadísticas en Vivo de la Jornada (11 Indicadores Institucionales Cáritas)
+                    </h2>
+                    <span className="text-xs text-slate-400">Actualización en tiempo real</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    {tarjetasIndicadores.map((card) => {
+                        const Icon = card.icono;
+                        return (
+                            <div
+                                key={card.id}
+                                className={`bg-white p-4 rounded-2xl shadow-xs border ${card.border} flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-all`}
+                            >
+                                <div className="flex items-start justify-between gap-2 relative z-10">
+                                    <div className={`w-10 h-10 rounded-xl ${card.bg} ${card.text} flex items-center justify-center flex-none`}>
+                                        <Icon className="w-5 h-5" />
+                                    </div>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-50 text-slate-500 border border-slate-100">
+                                        {card.tag}
+                                    </span>
+                                </div>
+                                <div className="mt-3 relative z-10">
+                                    <div className="text-2xl md:text-3xl font-bold text-slate-800 leading-none">
+                                        {card.valor}
+                                    </div>
+                                    <p className="text-xs font-bold text-slate-700 mt-1.5 leading-snug">
+                                        {card.titulo}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400 leading-tight mt-0.5">
+                                        {card.subtitulo}
+                                    </p>
+                                </div>
+                                <Icon className={`absolute -bottom-3 -right-3 w-16 h-16 ${card.text} opacity-5 -rotate-12`} />
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* 3. PESTAÑAS DE NAVEGACIÓN: SAMÁN NIÑOS vs SAMÁN MEL */}
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-3">
+                <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl">
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('ninos')}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+                            activeTab === 'ninos'
+                                ? 'bg-primary text-white shadow-md shadow-primary/20'
+                                : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                    >
+                        <span>👶</span>
+                        <span>1. SAMÁN Niños/as (NN)</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === 'ninos' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                            {jornadaActiva?.ninos?.length || 0}
+                        </span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('mel')}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+                            activeTab === 'mel'
+                                ? 'bg-primary text-white shadow-md shadow-primary/20'
+                                : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                    >
+                        <span>🤰</span>
+                        <span>2. SAMÁN Embarazadas / Lactantes (MEL)</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === 'mel' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                            {jornadaActiva?.embarazadas?.length || 0}
+                        </span>
+                    </button>
+                </div>
+
+                {/* Buscador rápido en la tabla inferior */}
+                <div className="relative w-full sm:w-72">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Buscar por nombre o cédula..."
+                        className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                </div>
+            </div>
+
+            {/* ===================================================================== */}
+            {/* CONTENIDO PESTAÑA 1: SAMÁN NIÑOS Y NIÑAS                              */}
+            {/* ===================================================================== */}
+            {activeTab === 'ninos' && (
+                <div className="space-y-6">
+                    {/* FORMULARIO DE CAPTURA RÁPIDA EN CAMPO - NIÑOS */}
+                    <form onSubmit={handleGuardarNino} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-slate-100 pb-4">
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                    <span>📝</span> Captura Antropométrica en Campo — Niños y Niñas (0 a 59 meses)
+                                </h3>
+                                <p className="text-xs text-slate-500">
+                                    Ingresa la cédula de la madre o representante para consultar el historial evolutivo del niño/a automáticamente.
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs">
+                                <span className="px-3 py-1 rounded-xl bg-slate-100 text-slate-700 font-semibold">
+                                    Edad calculada: <strong>{formatearEdadLegible(edadMesesCalculada)}</strong> ({rangoEdadCalculado})
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* TARJETA DE HISTORIAL EVOLUTIVO DEL PACIENTE (SI SE ENCUENTRA POR CÉDULA) */}
+                        {buscandoHistorialNino && (
+                            <div className="p-3 rounded-2xl bg-blue-50/60 border border-blue-100 text-xs text-blue-700 flex items-center gap-2">
+                                <History className="w-4 h-4 animate-spin" />
+                                <span>Buscando historial evolutivo para la cédula {ninoForm.cedulaRepresentante}...</span>
+                            </div>
+                        )}
+
+                        {historialNinos.length > 0 && ninoHistoricoSeleccionado && (
+                            <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/60 to-emerald-50/70 rounded-2xl p-4 border border-blue-200/80 shadow-xs space-y-3 animate-in fade-in duration-200">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center">
+                                            <History className="w-4 h-4" />
+                                        </span>
+                                        <div>
+                                            <h4 className="text-sm font-bold text-slate-900">
+                                                Historial Evolutivo Encontrado — C.I. Representante: {ninoHistoricoSeleccionado.cedulaRepresentante}
+                                            </h4>
+                                            <p className="text-xs text-slate-600">
+                                                Última medición registrada el{' '}
+                                                <strong>
+                                                    {new Date(ninoHistoricoSeleccionado.ultimaFechaMedicion).toLocaleDateString('es-VE', {
+                                                        day: '2-digit',
+                                                        month: 'long',
+                                                        year: 'numeric',
+                                                    })}
+                                                </strong>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {historialNinos.length > 1 && (
+                                            <select
+                                                value={ninoHistoricoSeleccionado.id}
+                                                onChange={(e) => {
+                                                    const found = historialNinos.find((h) => h.id === Number(e.target.value));
+                                                    if (found) cargarDatosNinoHistorico(found);
+                                                }}
+                                                className="bg-white border border-blue-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800"
+                                            >
+                                                {historialNinos.map((h) => (
+                                                    <option key={h.id} value={h.id}>
+                                                        Niño/a: {h.nombres} {h.apellidos}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => cargarDatosNinoHistorico(ninoHistoricoSeleccionado)}
+                                            className="bg-primary text-white px-3.5 py-1.5 rounded-xl text-xs font-bold hover:bg-primary/90 transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                        >
+                                            <UserCheck className="w-3.5 h-3.5" />
+                                            <span>Autocompletar datos de {ninoHistoricoSeleccionado.nombres}</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* 6 Datos Históricos Clave + Comparación en Vivo */}
+                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 pt-1">
+                                    <div className="bg-white/90 p-3 rounded-xl border border-white shadow-2xs">
+                                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Paciente / Últ. Fecha</span>
+                                        <span className="text-xs font-bold text-slate-800 truncate block">
+                                            {ninoHistoricoSeleccionado.nombres} {ninoHistoricoSeleccionado.apellidos}
+                                        </span>
+                                        <span className="text-[11px] text-primary font-semibold">
+                                            📅 {new Date(ninoHistoricoSeleccionado.ultimaFechaMedicion).toLocaleDateString('es-VE')}
+                                        </span>
+                                    </div>
+
+                                    <div className="bg-white/90 p-3 rounded-xl border border-white shadow-2xs">
+                                        <span className="text-[10px] font-bold uppercase text-slate-400 block">C. Brazo Anterior</span>
+                                        <div className="flex items-baseline gap-1.5">
+                                            <span className="text-base font-bold text-slate-900">{ninoHistoricoSeleccionado.cBrazoCm} cm</span>
+                                            {ninoForm.cBrazoCm && (
+                                                <span className={`text-xs font-bold flex items-center ${Number(ninoForm.cBrazoCm) >= ninoHistoricoSeleccionado.cBrazoCm ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                    {Number(ninoForm.cBrazoCm) >= ninoHistoricoSeleccionado.cBrazoCm ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                                                    {(Number(ninoForm.cBrazoCm) - ninoHistoricoSeleccionado.cBrazoCm).toFixed(1)}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <span className="text-[10px] text-slate-500">{ninoHistoricoSeleccionado.clasificacionPb}</span>
+                                    </div>
+
+                                    <div className="bg-white/90 p-3 rounded-xl border border-white shadow-2xs">
+                                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Talla Anterior</span>
+                                        <div className="flex items-baseline gap-1.5">
+                                            <span className="text-base font-bold text-slate-900">{ninoHistoricoSeleccionado.tallaCm} cm</span>
+                                            {ninoForm.tallaCm && (
+                                                <span className={`text-xs font-bold flex items-center ${Number(ninoForm.tallaCm) >= ninoHistoricoSeleccionado.tallaCm ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                    {(Number(ninoForm.tallaCm) - ninoHistoricoSeleccionado.tallaCm) >= 0 ? '+' : ''}
+                                                    {(Number(ninoForm.tallaCm) - ninoHistoricoSeleccionado.tallaCm).toFixed(1)}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <span className="text-[10px] text-slate-500">Estatura previa</span>
+                                    </div>
+
+                                    <div className="bg-white/90 p-3 rounded-xl border border-white shadow-2xs">
+                                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Peso Anterior</span>
+                                        <div className="flex items-baseline gap-1.5">
+                                            <span className="text-base font-bold text-slate-900">{ninoHistoricoSeleccionado.pesoKg} kg</span>
+                                            {ninoForm.pesoKg && (
+                                                <span className={`text-xs font-bold flex items-center ${Number(ninoForm.pesoKg) >= ninoHistoricoSeleccionado.pesoKg ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                    {(Number(ninoForm.pesoKg) - ninoHistoricoSeleccionado.pesoKg) >= 0 ? '+' : ''}
+                                                    {(Number(ninoForm.pesoKg) - ninoHistoricoSeleccionado.pesoKg).toFixed(2)} kg
+                                                </span>
+                                            )}
+                                        </div>
+                                        <span className="text-[10px] text-slate-500">Comparativa de peso</span>
+                                    </div>
+
+                                    <div className="bg-white/90 p-3 rounded-xl border border-white shadow-2xs">
+                                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Z-Score Anterior</span>
+                                        <div className="flex items-baseline gap-1.5">
+                                            <span className="text-base font-bold text-slate-900">{ninoHistoricoSeleccionado.zScore}</span>
+                                            {ninoForm.zScore !== '' && (
+                                                <span className={`text-xs font-bold ${Number(ninoForm.zScore) >= ninoHistoricoSeleccionado.zScore ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                    ({(Number(ninoForm.zScore) - ninoHistoricoSeleccionado.zScore) >= 0 ? '+' : ''}
+                                                    {(Number(ninoForm.zScore) - ninoHistoricoSeleccionado.zScore).toFixed(2)})
+                                                </span>
+                                            )}
+                                        </div>
+                                        <span className="text-[10px] text-slate-500">Desviación estándar</span>
+                                    </div>
+
+                                    <div className="bg-white/90 p-3 rounded-xl border border-white shadow-2xs">
+                                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Estado Nutricional Previo</span>
+                                        <span className={`inline-block mt-1 px-2 py-0.5 rounded-lg text-xs font-bold border ${obtenerEstiloEstado(ninoHistoricoSeleccionado.estadoNutricional)}`}>
+                                            {ninoHistoricoSeleccionado.estadoNutricional}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* BLOQUE 1: DATOS DEL CUIDADOR Y DEL NIÑO */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                    Cédula Madre / Representante *
+                                </label>
+                                <input
+                                    type="text"
+                                    required
+                                    placeholder="Ej: 19530148 (solo números)"
+                                    value={ninoForm.cedulaRepresentante}
+                                    onChange={(e) => setNinoForm({ ...ninoForm, cedulaRepresentante: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 bg-slate-50/50"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Parentesco</label>
+                                <select
+                                    value={ninoForm.parentesco}
+                                    onChange={(e) => setNinoForm({ ...ninoForm, parentesco: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"
+                                >
+                                    <option value="MADRE">MADRE</option>
+                                    <option value="PADRE">PADRE</option>
+                                    <option value="ABUELA">ABUELA</option>
+                                    <option value="ABUELO">ABUELO</option>
+                                    <option value="TIA">TIA</option>
+                                    <option value="TIO">TIO</option>
+                                    <option value="HERMANA">HERMANA</option>
+                                    <option value="HERMANO">HERMANO</option>
+                                    <option value="OTRO">OTRO</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Edad Representante</label>
+                                <select
+                                    value={ninoForm.edadRepresentante}
+                                    onChange={(e) => setNinoForm({ ...ninoForm, edadRepresentante: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"
+                                >
+                                    <option value="Menos de 17 años">Menos de 17 años</option>
+                                    <option value="Entre 18 - 49 años">Entre 18 - 49 años</option>
+                                    <option value="Entre 50 - 65 años">Entre 50 - 65 años</option>
+                                    <option value="Mas de 65 años">Más de 65 años</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Tipo de Ingreso</label>
+                                <select
+                                    value={ninoForm.tipoIngreso}
+                                    onChange={(e) => setNinoForm({ ...ninoForm, tipoIngreso: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"
+                                >
+                                    <option value="DIAGNOSTICO INICIAL">DIAGNÓSTICO INICIAL</option>
+                                    <option value="MONITOREO">MONITOREO</option>
+                                    <option value="REINGRESO">REINGRESO</option>
+                                    <option value="SALIDA DE VIVERO">SALIDA DE VIVERO</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Nombres del Niño/a *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    placeholder="Nombres"
+                                    value={ninoForm.nombres}
+                                    onChange={(e) => setNinoForm({ ...ninoForm, nombres: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Apellidos del Niño/a *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    placeholder="Apellidos"
+                                    value={ninoForm.apellidos}
+                                    onChange={(e) => setNinoForm({ ...ninoForm, apellidos: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Sexo *</label>
+                                <select
+                                    value={ninoForm.sexo}
+                                    onChange={(e) => setNinoForm({ ...ninoForm, sexo: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"
+                                >
+                                    <option value="FEMENINO">FEMENINO</option>
+                                    <option value="MASCULINO">MASCULINO</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Fecha de Nacimiento *</label>
+                                <input
+                                    type="date"
+                                    required
+                                    value={ninoForm.fechaNacimiento}
+                                    onChange={(e) => setNinoForm({ ...ninoForm, fechaNacimiento: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        {/* BLOQUE 2: MEDIDAS ANTROPOMÉTRICAS Y CÁLCULO EN TIEMPO REAL */}
+                        <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/70 space-y-4">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                                    📏 Tamizaje Antropométrico y Diagnóstico Automático
+                                </span>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-xs font-semibold text-slate-600">
+                                        Clasificación CBI/PB:{' '}
+                                        <strong className="text-slate-900">{clasificacionPbNinoCalc}</strong>
+                                    </span>
+                                    <span>•</span>
+                                    <span className={`px-3 py-1 rounded-xl text-xs font-bold border ${obtenerEstiloEstado(estadoNutricionalNinoCalc)}`}>
+                                        Diagnóstico Z-Score: {estadoNutricionalNinoCalc}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Peso (kg) *</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        required
+                                        placeholder="Ej: 11.5"
+                                        value={ninoForm.pesoKg}
+                                        onChange={(e) => setNinoForm({ ...ninoForm, pesoKg: e.target.value, zScoreManual: false })}
+                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-900"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Talla (cm) *</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        required
+                                        placeholder="Ej: 84.0"
+                                        value={ninoForm.tallaCm}
+                                        onChange={(e) => setNinoForm({ ...ninoForm, tallaCm: e.target.value, zScoreManual: false })}
+                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-900"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Posición Medida</label>
+                                    <select
+                                        value={ninoForm.posicionMedida}
+                                        onChange={(e) => setNinoForm({ ...ninoForm, posicionMedida: e.target.value, zScoreManual: false })}
+                                        className="w-full px-2 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
+                                        title="Posición en que fue medido el niño (Maventy/OMS)"
+                                    >
+                                        <option value="AUTO">Automático (OMS)</option>
+                                        <option value="ACOSTADO">Acostado (Recostado)</option>
+                                        <option value="DE_PIE">De pie (Estatura)</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">C. Cefálica (cm)</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        placeholder="27 cm"
+                                        value={ninoForm.longitudCabezaCm}
+                                        onChange={(e) => setNinoForm({ ...ninoForm, longitudCabezaCm: e.target.value })}
+                                        className="w-full px-2 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium text-slate-600 text-center"
+                                        title="Longitud de la cabeza (constante estándar Maventy: 27 cm)"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">C. Brazo / CBI (cm) *</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        required
+                                        placeholder="Ej: 15.0"
+                                        value={ninoForm.cBrazoCm}
+                                        onChange={(e) => setNinoForm({ ...ninoForm, cBrazoCm: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-900"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Z-Score (ZPT) *</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        required
+                                        placeholder="Maventy OMS"
+                                        value={ninoForm.zScore}
+                                        onChange={(e) => setNinoForm({ ...ninoForm, zScore: e.target.value, zScoreManual: true })}
+                                        className="w-full px-3 py-2 rounded-xl border border-primary/40 bg-white text-sm font-bold text-primary"
+                                        title="Calculado automáticamente con el algoritmo oficial de Maventy/OMS. Puedes editarlo si lo deseas."
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Edema</label>
+                                    <select
+                                        value={ninoForm.edema}
+                                        onChange={(e) => setNinoForm({ ...ninoForm, edema: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm"
+                                    >
+                                        <option value="NO">NO</option>
+                                        <option value="SI">SÍ</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Desparasitado</label>
+                                    <select
+                                        value={ninoForm.desparasitado}
+                                        onChange={(e) => setNinoForm({ ...ninoForm, desparasitado: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm"
+                                    >
+                                        <option value="NO">NO</option>
+                                        <option value="SI">SÍ</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* BLOQUE 3: TRATAMIENTOS ENTREGADOS SEGÚN PROTOCOLO CÁRITAS */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            {/* Micronutrientes */}
+                            <div className={`p-3.5 rounded-2xl border transition-all ${ninoForm.micronutrientes ? 'bg-teal-50/70 border-teal-300' : 'bg-white border-slate-200'}`}>
+                                <div className="flex items-center justify-between">
+                                    <label className="flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={ninoForm.micronutrientes}
+                                            onChange={(e) => setNinoForm({ ...ninoForm, micronutrientes: e.target.checked, cantMicronutrientes: e.target.checked ? 30 : 0 })}
+                                            className="rounded text-teal-600"
+                                        />
+                                        <span>💊 Micronutrientes</span>
+                                    </label>
+                                    {ninoForm.micronutrientes && (
+                                        <input
+                                            type="number"
+                                            value={ninoForm.cantMicronutrientes}
+                                            onChange={(e) => setNinoForm({ ...ninoForm, cantMicronutrientes: Number(e.target.value) })}
+                                            className="w-16 px-2 py-1 text-xs font-bold border border-teal-300 rounded-lg bg-white text-center"
+                                        />
+                                    )}
+                                </div>
+                                <p className="text-[10px] text-slate-500 mt-1">Adecuados / RN &gt; 2 años (30 sobres)</p>
+                            </div>
+
+                            {/* Plumpy Amarillo */}
+                            <div className={`p-3.5 rounded-2xl border transition-all ${ninoForm.plumpyAmarillo ? 'bg-yellow-50/80 border-yellow-300' : 'bg-white border-slate-200'}`}>
+                                <div className="flex items-center justify-between">
+                                    <label className="flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={ninoForm.plumpyAmarillo}
+                                            onChange={(e) => setNinoForm({ ...ninoForm, plumpyAmarillo: e.target.checked, cantPlumpyAmarillo: e.target.checked ? 30 : 0 })}
+                                            className="rounded text-yellow-600"
+                                        />
+                                        <span>🟨 Plumpy Amarillo (DOZ)</span>
+                                    </label>
+                                    {ninoForm.plumpyAmarillo && (
+                                        <input
+                                            type="number"
+                                            value={ninoForm.cantPlumpyAmarillo}
+                                            onChange={(e) => setNinoForm({ ...ninoForm, cantPlumpyAmarillo: Number(e.target.value) })}
+                                            className="w-16 px-2 py-1 text-xs font-bold border border-yellow-300 rounded-lg bg-white text-center"
+                                        />
+                                    )}
+                                </div>
+                                <p className="text-[10px] text-slate-500 mt-1">Riesgo Nutricional &lt; 2 años (30 sobres)</p>
+                            </div>
+
+                            {/* Plumpy Rojo */}
+                            <div className={`p-3.5 rounded-2xl border transition-all ${ninoForm.plumpyRojo ? 'bg-rose-50/80 border-rose-300' : 'bg-white border-slate-200'}`}>
+                                <div className="flex items-center justify-between">
+                                    <label className="flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={ninoForm.plumpyRojo}
+                                            onChange={(e) => setNinoForm({ ...ninoForm, plumpyRojo: e.target.checked, cantPlumpyRojo: e.target.checked ? 30 : 0 })}
+                                            className="rounded text-rose-600"
+                                        />
+                                        <span>🟥 Plumpy Rojo (NUT)</span>
+                                    </label>
+                                    {ninoForm.plumpyRojo && (
+                                        <input
+                                            type="number"
+                                            value={ninoForm.cantPlumpyRojo}
+                                            onChange={(e) => setNinoForm({ ...ninoForm, cantPlumpyRojo: Number(e.target.value) })}
+                                            className="w-16 px-2 py-1 text-xs font-bold border border-rose-300 rounded-lg bg-white text-center"
+                                        />
+                                    )}
+                                </div>
+                                <p className="text-[10px] text-slate-500 mt-1">DAM (1 diario / 30) • DAS (2 diarios / 60)</p>
+                            </div>
+
+                            {/* Observaciones */}
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Observaciones</label>
+                                <input
+                                    type="text"
+                                    placeholder="Ej: SE MIDIÓ RECOSTADO / NO ENTRA EN SAMAN"
+                                    value={ninoForm.observaciones}
+                                    onChange={(e) => setNinoForm({ ...ninoForm, observaciones: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end pt-2">
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="bg-primary text-white px-6 py-3 rounded-2xl text-sm font-bold shadow-md shadow-primary/20 hover:bg-primary/90 transition-all cursor-pointer disabled:opacity-50"
+                            >
+                                {isSubmitting ? 'Guardando...' : '+ Registrar Evaluación de Niño/a en la Jornada'}
+                            </button>
+                        </div>
+                    </form>
+
+                    {/* TABLA DE NIÑOS ATENDIDOS EN LA JORNADA ACTIVA */}
+                    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-base font-bold text-slate-900">
+                                    📋 Niños/as Registrados en la Jornada ({ninosFiltrados.length})
+                                </h3>
+                                <p className="text-xs text-slate-500">
+                                    Estos registros se exportan directamente a la pestaña &ldquo;1. SAMAN NIÑOS&rdquo; del archivo oficial de Cáritas.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-100">
+                                        <th className="py-3 px-4">N°</th>
+                                        <th className="py-3 px-4">C.I. Rep. / Parentesco</th>
+                                        <th className="py-3 px-4">Niño / Niña</th>
+                                        <th className="py-3 px-4">Edad / Rango</th>
+                                        <th className="py-3 px-4 text-center">Peso / Talla / CBI</th>
+                                        <th className="py-3 px-4 text-center">Z-Score</th>
+                                        <th className="py-3 px-4">Estado Nutricional</th>
+                                        <th className="py-3 px-4">Tratamiento Suministrado</th>
+                                        <th className="py-3 px-4 text-right">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {ninosFiltrados.map((n: any, idx: number) => (
+                                        <tr key={n.id} className="hover:bg-slate-50/80 transition-colors">
+                                            <td className="py-3 px-4 font-bold text-slate-400">{idx + 1}</td>
+                                            <td className="py-3 px-4">
+                                                <div className="font-bold text-slate-800">{n.cedulaRepresentante}</div>
+                                                <div className="text-[10px] text-slate-500">{n.parentesco} • {n.tipoIngreso}</div>
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                <div className="font-bold text-slate-900">{n.nombres} {n.apellidos}</div>
+                                                <div className="text-[10px] text-slate-500">
+                                                    {n.sexo} • Nac: {new Date(n.fechaNacimiento).toLocaleDateString('es-VE')}
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                <div className="font-semibold text-slate-700">{formatearEdadLegible(n.edadMeses)}</div>
+                                                <div className="text-[10px] text-slate-400">{n.rangoEdad}</div>
+                                            </td>
+                                            <td className="py-3 px-4 text-center">
+                                                <span className="font-bold text-slate-800">{n.pesoKg} kg</span> •{' '}
+                                                <span className="font-semibold text-slate-700">{n.tallaCm} cm</span> •{' '}
+                                                <span className="text-primary font-bold">{n.cBrazoCm} cm</span>
+                                            </td>
+                                            <td className="py-3 px-4 text-center font-bold text-slate-900">
+                                                {n.zScore}
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                <span className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border ${obtenerEstiloEstado(n.estadoNutricional)}`}>
+                                                    {n.estadoNutricional}
+                                                </span>
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                <div className="font-medium text-slate-800">{n.tratamientoProtocolo}</div>
+                                                {n.cantidadSuministrada > 0 && (
+                                                    <span className="text-[10px] text-emerald-600 font-bold">
+                                                        {n.cantidadSuministrada} sobres • Desp: {n.desparasitado}
+                                                    </span>
+                                                )}
+                                                {n.observaciones && (
+                                                    <div className="text-[10px] text-amber-600 italic">{n.observaciones}</div>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-4 text-right">
+                                                <button
+                                                    type="button"
+                                                    onClick={async () => {
+                                                        if (confirm(`¿Eliminar el registro de ${n.nombres} ${n.apellidos}?`)) {
+                                                            await eliminarRegistroSamanNino(n.id);
+                                                            router.refresh();
+                                                        }
+                                                    }}
+                                                    className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                                                    title="Eliminar registro"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ===================================================================== */}
+            {/* CONTENIDO PESTAÑA 2: SAMÁN EMBARAZADAS Y LACTANTES (MEL)              */}
+            {/* ===================================================================== */}
+            {activeTab === 'mel' && (
+                <div className="space-y-6">
+                    <form onSubmit={handleGuardarMel} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-slate-100 pb-4">
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                    <span>🤰</span> Captura Antropométrica en Campo — Mujeres Embarazadas y Lactantes (MEL)
+                                </h3>
+                                <p className="text-xs text-slate-500">
+                                    Ingresa la cédula de la paciente para verificar su historial evolutivo previo y calcular IMC y Perímetro Braquial.
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs">
+                                <span className="px-3 py-1 rounded-xl bg-pink-50 text-pink-700 font-semibold border border-pink-100">
+                                    Edad: <strong>{edadAniosMelCalculada} años</strong> • IMC: <strong>{imcMelCalculado || '0.0'}</strong> ({clasificacionImcMelCalc})
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* TARJETA DE HISTORIAL EVOLUTIVO MEL */}
+                        {buscandoHistorialMel && (
+                            <div className="p-3 rounded-2xl bg-pink-50/60 border border-pink-100 text-xs text-pink-700 flex items-center gap-2">
+                                <History className="w-4 h-4 animate-spin" />
+                                <span>Buscando historial evolutivo MEL para la cédula {melForm.cedula}...</span>
+                            </div>
+                        )}
+
+                        {historialMel && (
+                            <div className="bg-gradient-to-r from-pink-50/90 via-purple-50/60 to-amber-50/60 rounded-2xl p-4 border border-pink-200 shadow-xs space-y-3 animate-in fade-in duration-200">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-8 h-8 rounded-xl bg-pink-600 text-white flex items-center justify-center">
+                                            <History className="w-4 h-4" />
+                                        </span>
+                                        <div>
+                                            <h4 className="text-sm font-bold text-slate-900">
+                                                Historial Evolutivo MEL — {historialMel.nombre} {historialMel.apellido} (C.I. {historialMel.cedula})
+                                            </h4>
+                                            <p className="text-xs text-slate-600">
+                                                Última fecha de medición:{' '}
+                                                <strong>{new Date(historialMel.ultimaFechaMedicion).toLocaleDateString('es-VE')}</strong>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => cargarDatosMelHistorico(historialMel)}
+                                        className="bg-pink-600 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold hover:bg-pink-700 transition-all flex items-center gap-1.5 cursor-pointer"
+                                    >
+                                        <UserCheck className="w-3.5 h-3.5" />
+                                        <span>Autocompletar datos de {historialMel.nombre}</span>
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                                    <div className="bg-white/90 p-3 rounded-xl border border-white">
+                                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Última Fecha</span>
+                                        <span className="text-sm font-bold text-slate-900">
+                                            {new Date(historialMel.ultimaFechaMedicion).toLocaleDateString('es-VE')}
+                                        </span>
+                                    </div>
+                                    <div className="bg-white/90 p-3 rounded-xl border border-white">
+                                        <span className="text-[10px] font-bold uppercase text-slate-400 block">C. Brazo (PB)</span>
+                                        <span className="text-sm font-bold text-slate-900">{historialMel.cBrazoCm} cm</span>
+                                        <span className="text-[10px] text-slate-500 block">{historialMel.clasificacionPb}</span>
+                                    </div>
+                                    <div className="bg-white/90 p-3 rounded-xl border border-white">
+                                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Talla (cm)</span>
+                                        <span className="text-sm font-bold text-slate-900">{historialMel.tallaCm} cm</span>
+                                    </div>
+                                    <div className="bg-white/90 p-3 rounded-xl border border-white">
+                                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Peso (kg)</span>
+                                        <span className="text-sm font-bold text-slate-900">{historialMel.pesoKg} kg</span>
+                                    </div>
+                                    <div className="bg-white/90 p-3 rounded-xl border border-white">
+                                        <span className="text-[10px] font-bold uppercase text-slate-400 block">IMC / Estado Nutricional</span>
+                                        <span className="text-sm font-bold text-slate-900">{Number(historialMel.imc).toFixed(1)}</span>{' '}
+                                        <span className="text-xs font-semibold text-pink-700">({historialMel.clasificacionNutricional})</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Cédula de Identidad *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    placeholder="Ej: 28479221"
+                                    value={melForm.cedula}
+                                    onChange={(e) => setMelForm({ ...melForm, cedula: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold bg-slate-50/50"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Nombres *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    placeholder="Nombre de la paciente"
+                                    value={melForm.nombre}
+                                    onChange={(e) => setMelForm({ ...melForm, nombre: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Apellidos *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    placeholder="Apellido de la paciente"
+                                    value={melForm.apellido}
+                                    onChange={(e) => setMelForm({ ...melForm, apellido: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Fecha de Nacimiento *</label>
+                                <input
+                                    type="date"
+                                    required
+                                    value={melForm.fechaNacimiento}
+                                    onChange={(e) => setMelForm({ ...melForm, fechaNacimiento: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Condición (MEL)</label>
+                                <select
+                                    value={melForm.estadoEmbarazoLactancia}
+                                    onChange={(e) => setMelForm({ ...melForm, estadoEmbarazoLactancia: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"
+                                >
+                                    <option value="EMBARAZADA">EMBARAZADA</option>
+                                    <option value="LACTANTE">LACTANTE</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Semana de Gestación</label>
+                                <input
+                                    type="number"
+                                    placeholder="Ej: 15 (si está embarazada)"
+                                    value={melForm.semanaGestacion}
+                                    onChange={(e) => setMelForm({ ...melForm, semanaGestacion: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Tipo de Ingreso</label>
+                                <select
+                                    value={melForm.tipoIngreso}
+                                    onChange={(e) => setMelForm({ ...melForm, tipoIngreso: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"
+                                >
+                                    <option value="DIAGNOSTICO INICIAL">DIAGNÓSTICO INICIAL</option>
+                                    <option value="MONITOREO">MONITOREO</option>
+                                    <option value="REINGRESO">REINGRESO</option>
+                                    <option value="SALIDA DE VIVERO">SALIDA DE VIVERO</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Desparasitada</label>
+                                <select
+                                    value={melForm.desparasitada}
+                                    onChange={(e) => setMelForm({ ...melForm, desparasitada: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"
+                                >
+                                    <option value="NO">NO</option>
+                                    <option value="SI">SÍ</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* ANTROPOMETRÍA MEL */}
+                        <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/70 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Peso (kg) *</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    required
+                                    placeholder="Ej: 64.5"
+                                    value={melForm.pesoKg}
+                                    onChange={(e) => setMelForm({ ...melForm, pesoKg: e.target.value })}
+                                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-bold"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Talla (cm) *</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    required
+                                    placeholder="Ej: 160.5"
+                                    value={melForm.tallaCm}
+                                    onChange={(e) => setMelForm({ ...melForm, tallaCm: e.target.value })}
+                                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-bold"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">C. Brazo / PB (cm) *</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    required
+                                    placeholder="≤ 22.1 Bajo Peso"
+                                    value={melForm.cBrazoCm}
+                                    onChange={(e) => setMelForm({ ...melForm, cBrazoCm: e.target.value })}
+                                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-bold"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">IMC / Clasificación</label>
+                                <div className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-800">
+                                    IMC: {imcMelCalculado || '0.0'} — {clasificacionImcMelCalc}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Clasificación PB (CBI)</label>
+                                <div className={`px-3 py-2 rounded-xl border text-xs font-bold ${ obtenerEstiloEstado(clasificacionPbMelCalc) }`}>
+                                    {clasificacionPbMelCalc}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* TRATAMIENTO MEL */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Tratamiento Protocolo Cáritas</label>
+                                <select
+                                    value={melForm.tratamiento}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setMelForm({
+                                            ...melForm,
+                                            tratamiento: val,
+                                            plumpyMum: val.toLowerCase().includes('plumpy'),
+                                            cantPlumpyMum: val.toLowerCase().includes('plumpy') ? melForm.cantidad : 0,
+                                            micronutrientes: !val.toLowerCase().includes('plumpy'),
+                                            cantMicronutrientes: !val.toLowerCase().includes('plumpy') ? melForm.cantidad : 0,
+                                        });
+                                    }}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"
+                                >
+                                    <option value="Hierro+Ácido Fólico">Hierro+Ácido Fólico</option>
+                                    <option value="Plumpy Mom">Plumpy Mom (Suplemento MEL)</option>
+                                    <option value="Tabletas Prenatales (Micronutrientes)">Tabletas Prenatales (Micronutrientes)</option>
+                                    <option value="Sin Tratamiento">Sin Tratamiento</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Cantidad Entregada</label>
+                                <input
+                                    type="number"
+                                    value={melForm.cantidad}
+                                    onChange={(e) => setMelForm({ ...melForm, cantidad: Number(e.target.value) })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm"
+                                />
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Observaciones</label>
+                                <input
+                                    type="text"
+                                    placeholder="Ej: NO SE LE SUMINISTRÓ PLUMPY"
+                                    value={melForm.observaciones}
+                                    onChange={(e) => setMelForm({ ...melForm, observaciones: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end pt-2">
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="bg-primary text-white px-6 py-3 rounded-2xl text-sm font-bold shadow-md shadow-primary/20 hover:bg-primary/90 transition-all cursor-pointer disabled:opacity-50"
+                            >
+                                {isSubmitting ? 'Guardando...' : '+ Registrar Evaluación MEL en la Jornada'}
+                            </button>
+                        </div>
+                    </form>
+
+                    {/* TABLA DE MEL ATENDIDAS EN LA JORNADA ACTIVA */}
+                    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-base font-bold text-slate-900">
+                                    📋 Mujeres Embarazadas y Lactantes Registradas ({melFiltradas.length})
+                                </h3>
+                                <p className="text-xs text-slate-500">
+                                    Estos registros se exportan directamente a la pestaña &ldquo;2. SAMAN EMBARAZADAS&rdquo; del archivo oficial de Cáritas.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-100">
+                                        <th className="py-3 px-4">#</th>
+                                        <th className="py-3 px-4">Cédula</th>
+                                        <th className="py-3 px-4">Nombre y Apellido</th>
+                                        <th className="py-3 px-4">Condición</th>
+                                        <th className="py-3 px-4 text-center">Peso / Talla / IMC</th>
+                                        <th className="py-3 px-4">Clasif. IMC</th>
+                                        <th className="py-3 px-4">C. Brazo (PB)</th>
+                                        <th className="py-3 px-4">Tratamiento</th>
+                                        <th className="py-3 px-4 text-right">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {melFiltradas.map((m: any, idx: number) => (
+                                        <tr key={m.id} className="hover:bg-slate-50/80 transition-colors">
+                                            <td className="py-3 px-4 font-bold text-slate-400">{idx + 1}</td>
+                                            <td className="py-3 px-4 font-bold text-slate-800">{m.cedula}</td>
+                                            <td className="py-3 px-4">
+                                                <div className="font-bold text-slate-900">{m.nombre} {m.apellido}</div>
+                                                <div className="text-[10px] text-slate-500">
+                                                    Nac: {new Date(m.fechaNacimiento).toLocaleDateString('es-VE')}
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                <span className="font-semibold text-pink-700">{m.estadoEmbarazoLactancia}</span>
+                                                {m.semanaGestacion && (
+                                                    <div className="text-[10px] text-slate-500">{m.semanaGestacion} sem. gestación</div>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-4 text-center">
+                                                <span className="font-bold text-slate-800">{m.pesoKg} kg</span> •{' '}
+                                                <span>{m.tallaCm} cm</span> •{' '}
+                                                <span className="font-bold text-primary">IMC {Number(m.imc).toFixed(1)}</span>
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                <span className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border ${obtenerEstiloEstado(m.clasificacionNutricional)}`}>
+                                                    {m.clasificacionNutricional}
+                                                </span>
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                <div className="font-bold text-slate-800">{m.cBrazoCm} cm</div>
+                                                <span className={`inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-bold border ${obtenerEstiloEstado(m.clasificacionPb)}`}>
+                                                    {m.clasificacionPb}
+                                                </span>
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                <div className="font-medium text-slate-800">{m.tratamiento} ({m.cantidad})</div>
+                                                {m.observaciones && (
+                                                    <div className="text-[10px] text-amber-600 italic">{m.observaciones}</div>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-4 text-right">
+                                                <button
+                                                    type="button"
+                                                    onClick={async () => {
+                                                        if (confirm(`¿Eliminar el registro de ${m.nombre} ${m.apellido}?`)) {
+                                                            await eliminarRegistroSamanEmbarazada(m.id);
+                                                            router.refresh();
+                                                        }
+                                                    }}
+                                                    className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL PARA CREAR NUEVA JORNADA SAMÁN */}
+            {showNewJornadaModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-5 animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h3 className="text-lg font-bold text-slate-900">🌱 Crear Nueva Jornada SAMÁN</h3>
+                            <button
+                                type="button"
+                                onClick={() => setShowNewJornadaModal(false)}
+                                className="text-slate-400 hover:text-slate-700 text-lg font-bold cursor-pointer"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleCrearJornada} className="space-y-4">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Fecha de la Jornada *</label>
+                                    <input
+                                        type="date"
+                                        required
+                                        value={nuevaJornadaForm.fecha}
+                                        onChange={(e) => setNuevaJornadaForm({ ...nuevaJornadaForm, fecha: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Sector / Comunidad *</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={nuevaJornadaForm.comunidad}
+                                        onChange={(e) => setNuevaJornadaForm({ ...nuevaJornadaForm, comunidad: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Diócesis</label>
+                                    <input
+                                        type="text"
+                                        value={nuevaJornadaForm.diocesis}
+                                        onChange={(e) => setNuevaJornadaForm({ ...nuevaJornadaForm, diocesis: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-slate-50"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Estado / Municipio</label>
+                                    <input
+                                        type="text"
+                                        value={nuevaJornadaForm.municipio}
+                                        onChange={(e) => setNuevaJornadaForm({ ...nuevaJornadaForm, municipio: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-slate-50"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Parroquia Civil</label>
+                                    <input
+                                        type="text"
+                                        value={nuevaJornadaForm.parroquiaCivil}
+                                        onChange={(e) => setNuevaJornadaForm({ ...nuevaJornadaForm, parroquiaCivil: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-slate-50"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Parroquia Eclesial</label>
+                                    <input
+                                        type="text"
+                                        value={nuevaJornadaForm.parroquiaEclesial}
+                                        onChange={(e) => setNuevaJornadaForm({ ...nuevaJornadaForm, parroquiaEclesial: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-slate-50"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowNewJornadaModal(false)}
+                                    className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="bg-primary text-white px-5 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-primary/90 cursor-pointer"
+                                >
+                                    Crear e Iniciar Jornada
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}

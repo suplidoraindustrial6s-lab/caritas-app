@@ -10,6 +10,7 @@ const navItems = [
     { name: 'Beneficiarios', href: '/dashboard/beneficiaries', icon: '👥' },
     { name: 'Grupos', href: '/dashboard/groups', icon: '📑' },
     { name: 'Jornada de Servicio', href: '/dashboard/service', icon: '🎁' },
+    { name: 'Programa SAMÁN', href: '/dashboard/saman', icon: '🌱' },
     { name: 'Reportes', href: '/dashboard/reports', icon: '📊' },
     { name: 'Importar Datos', href: '/dashboard/import', icon: '📥' },
 ];

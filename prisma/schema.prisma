@@ -86,7 +86,7 @@ model Attendance {
   status            String      @default("Presente") // Presente, Ausente
 
   createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt // Para tracking de modificaciones (upsert)
+  updatedAt         DateTime    @default(now()) @updatedAt // Para tracking de modificaciones (upsert)
 }
 
 // Jornada de Servicio (Antes Calendario)
@@ -120,4 +120,145 @@ model User {
   role      String   @default("ADMIN")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+
+// ==========================================
+// MÓDULO PROGRAMA NUTRICIONAL SAMÁN (NN y MEL)
+// ==========================================
+
+// Jornadas del Programa SAMÁN
+model JornadasSAMAN {
+  id                Int      @id @default(autoincrement())
+  fecha             DateTime @default(now())
+  diocesis          String   @default("MARACAY")
+  estado            String   @default("ARAGUA")
+  municipio         String   @default("MBI")
+  parroquiaCivil    String   @default("EL LIMÓN")
+  parroquiaEclesial String   @default("LA MILAGROSA")
+  centro            String   @default("MARACAY - EL LIMÓN")
+  comunidad         String   @default("TEJERÍAS")
+  estatus           String   @default("ABIERTA") // ABIERTA, CERRADA
+
+  ninos             RegistroSamanNinos[]
+  embarazadas       RegistroSamanEmbarazadas[]
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// Registro de Niños y Niñas (SAMÁN Niños)
+model RegistroSamanNinos {
+  id                     Int           @id @default(autoincrement())
+  jornadaId              Int
+  jornada                JornadasSAMAN @relation(fields: [jornadaId], references: [id], onDelete: Cascade)
+
+  // Datos del acompañante / representante
+  cedulaRepresentante    String
+  edadRepresentante      String        @default("Entre 18 - 49 años")
+  parentesco             String        @default("MADRE")
+  grupoEtnico            String        @default("Mestizo")
+
+  // Datos de identificación del niño/a
+  nombres                String
+  apellidos              String
+  sexo                   String        // FEMENINO, MASCULINO
+  fechaNacimiento        DateTime
+  tipoIngreso            String        @default("DIAGNOSTICO INICIAL") // DIAGNOSTICO INICIAL, MONITOREO, SALIDA DE VIVERO, REINGRESO
+  nroControl             Int           @default(0)
+  codigoHistoria         String?
+
+  // Condición de salud adicional
+  discapacidad           String        @default("NO")
+  detalleDiscapacidad    String?
+  hemoglobina            Float?
+  desparasitado          String        @default("NO") // SI, NO
+  referidoMedico         String?       // SI, NO
+  proyectoTengo          String?       // SI, NO
+
+  // Antropometría
+  pesoKg                 Float
+  tallaCm                Float
+  posicionMedida         String        @default("AUTO") // AUTO, ACOSTADO, DE_PIE
+  longitudCabezaCm       Float?        @default(27.0) // Constante estándar Maventy (27 cm)
+  cBrazoCm               Float
+  edema                  String        @default("NO") // SI, NO
+
+  // Cálculos automáticos
+  edadMeses              Float
+  rangoEdad              String?       // 0-6 meses, 7-23 meses, 24-59 meses
+  clasificacionPb        String        @default("Adecuado")
+  zScore                 Float
+  estadoNutricional      String        // Adecuado, Riesgo Nutricional, Desnutrición aguda moderada, Desnutrición aguda severa
+
+  // Tratamientos entregados y cantidades
+  micronutrientes        Boolean       @default(false)
+  cantMicronutrientes    Int           @default(0)
+  plumpyAmarillo         Boolean       @default(false)
+  cantPlumpyAmarillo     Int           @default(0)
+  plumpyRojo             Boolean       @default(false)
+  cantPlumpyRojo         Int           @default(0)
+  plumpyMum              Boolean       @default(false)
+  cantPlumpyMum          Int           @default(0)
+  tratamientoProtocolo   String?       // Texto exacto para columna AG del Excel oficial
+  cantidadSuministrada   Int           @default(0)
+  otrosComplementos      String?
+
+  // Datos de vivero y observaciones
+  fechaInicioVivero      DateTime?
+  fechaSalidaVivero      DateTime?
+  zScoreEntrada          Float?
+  zScoreSalida           Float?
+  semanasVivero          Int?
+  situacionSalida        String?
+  observaciones          String?
+
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  @@index([cedulaRepresentante])
+  @@index([jornadaId])
+}
+
+// Registro de Mujeres Embarazadas y Lactantes (SAMÁN MEL)
+model RegistroSamanEmbarazadas {
+  id                       Int           @id @default(autoincrement())
+  jornadaId                Int
+  jornada                  JornadasSAMAN @relation(fields: [jornadaId], references: [id], onDelete: Cascade)
+
+  // Datos de identificación
+  nombre                   String
+  apellido                 String
+  cedula                   String
+  fechaNacimiento          DateTime
+  grupoEtnico              String        @default("Mestizo")
+  tipoIngreso              String        @default("DIAGNOSTICO INICIAL")
+  estadoEmbarazoLactancia  String        @default("EMBARAZADA") // EMBARAZADA, LACTANTE
+  semanaGestacion          Int?
+
+  // Antropometría y cálculos
+  edema                    String        @default("No") // Si, No
+  pesoKg                   Float
+  tallaCm                  Float
+  imc                      Float
+  clasificacionNutricional String        // Bajo Peso, Adecuado, Sobrepeso, Obesidad
+  cBrazoCm                 Float
+  clasificacionPb          String        // Bajo peso, Peso Normal
+
+  // Tratamiento y seguimiento
+  desparasitada            String        @default("NO") // SI, NO
+  tratamiento              String?       // Hierro+Ácido Fólico, Plumpy Mom, Micronutrientes, etc.
+  cantidad                 Int           @default(0)
+  plumpyMum                Boolean       @default(false)
+  cantPlumpyMum            Int           @default(0)
+  micronutrientes          Boolean       @default(false)
+  cantMicronutrientes      Int           @default(0)
+  situacionSalida          String?
+  observaciones            String?
+
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime      @updatedAt
+
+  @@index([cedula])
+  @@index([jornadaId])
 }
