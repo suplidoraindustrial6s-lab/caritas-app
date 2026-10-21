@@ -40,6 +40,7 @@ USER nextjs
 EXPOSE 3000
 
 ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
 
 # Execute migrations/push and start server
 CMD ["sh", "-c", "prisma db push --accept-data-loss --skip-generate && node server.js"]
