@@ -502,3 +502,17 @@ export async function eliminarRegistroSamanEmbarazada(id: number) {
         return { success: false, error: 'No se pudo eliminar el registro' };
     }
 }
+
+/**
+ * Elimina una jornada SAMÁN por su ID
+ */
+export async function eliminarJornadaSaman(id: number) {
+    try {
+        await prisma.jornadasSAMAN.delete({ where: { id } });
+        revalidatePath('/dashboard/saman');
+        return { success: true };
+    } catch (error) {
+        console.error('Error al eliminar jornada SAMÁN:', error);
+        return { success: false, error: 'No se pudo eliminar la jornada' };
+    }
+}

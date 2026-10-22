@@ -33,6 +33,7 @@ import {
     registrarSamanEmbarazada,
     eliminarRegistroSamanNino,
     eliminarRegistroSamanEmbarazada,
+    eliminarJornadaSaman,
 } from '@/app/actions/saman';
 import {
     calcularEdadMeses,
@@ -608,7 +609,9 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                         <Calendar className="w-4 h-4 text-primary" />
                         <select
                             value={jornadaActiva?.id || ''}
-                            onChange={(e) => router.push(`/dashboard/saman?jornadaId=${e.target.value}`)}
+                            onChange={(e) => {
+                                window.location.href = `/dashboard/saman?jornadaId=${e.target.value}`;
+                            }}
                             className="bg-transparent text-sm font-semibold text-slate-800 focus:outline-none cursor-pointer"
                         >
                             {jornadas.map((j: any) => (
@@ -623,6 +626,23 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                             ))}
                         </select>
                     </div>
+
+                    {/* Botón Eliminar Jornada Vacía (solo si no tiene pacientes registrados y hay más de una jornada) */}
+                    {(jornadaActiva?.ninos?.length || 0) === 0 && (jornadaActiva?.embarazadas?.length || 0) === 0 && jornadas.length > 1 && (
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                if (confirm(`¿Eliminar la jornada vacía "${jornadaActiva?.comunidad}"?`)) {
+                                    await eliminarJornadaSaman(jornadaActiva.id);
+                                    window.location.href = '/dashboard/saman';
+                                }
+                            }}
+                            className="p-2.5 text-slate-400 hover:text-red-600 rounded-2xl border border-slate-200 hover:border-red-200 hover:bg-red-50 transition-all cursor-pointer"
+                            title="Eliminar esta jornada vacía"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </button>
+                    )}
 
                     {/* Botón Nueva Jornada */}
                     <button
