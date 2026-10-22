@@ -145,10 +145,10 @@ export default async function DashboardPage() {
                                 stats.recentActivity.map((activity: any) => (
                                     <div key={activity.id} className="flex gap-3 items-start p-3 rounded-2xl bg-slate-50/50 hover:bg-slate-50 transition-colors">
                                         <div className="w-10 h-10 rounded-full bg-white border border-slate-100 flex items-center justify-center text-lg shadow-sm font-bold text-slate-700">
-                                            {activity.beneficiary.fullName.charAt(0)}
+                                            {activity.beneficiary?.fullName?.charAt(0) || "B"}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-bold text-slate-800 truncate">{activity.beneficiary.fullName}</p>
+                                            <p className="text-sm font-bold text-slate-800 truncate">{activity.beneficiary?.fullName || "Beneficiario"}</p>
                                             <p className="text-xs text-slate-500">
                                                 {new Date(activity.date).toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric' })}
                                             </p>

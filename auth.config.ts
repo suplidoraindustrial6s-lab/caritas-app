@@ -7,18 +7,23 @@ export const authConfig = {
         signIn: '/login',
     },
     callbacks: {
-        authorized({ auth, request: { nextUrl } }) {
+        authorized({ auth, request: { nextUrl, headers } }) {
+            // Permitir peticiones de Server Actions sin interrupción de middleware
+            if (headers.get('next-action')) {
+                return true;
+            }
+
             const isLoggedIn = !!auth?.user;
             const isOnDashboard = nextUrl.pathname.startsWith('/dashboard');
 
             if (isOnDashboard) {
                 if (isLoggedIn) return true;
-                return false; // Redirect unauthenticated users to login page
-            } else if (isLoggedIn) {
+                return false; // Redirigir a /login
+            } else if (isLoggedIn && nextUrl.pathname === '/login') {
                 return Response.redirect(new URL('/dashboard', nextUrl));
             }
             return true;
         },
     },
-    providers: [], // Add providers with an empty array for now
+    providers: [],
 } satisfies NextAuthConfig;

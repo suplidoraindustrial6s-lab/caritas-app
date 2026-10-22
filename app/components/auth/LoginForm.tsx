@@ -1,14 +1,43 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useState } from 'react';
 import { authenticate } from '@/app/actions/auth';
 import Image from 'next/image';
 
 export default function LoginForm() {
-    const [errorMessage, dispatch] = useFormState(authenticate, undefined);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [pending, setPending] = useState(false);
+
+    async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault();
+        setPending(true);
+        setErrorMessage(null);
+
+        const formData = new FormData(e.currentTarget);
+        try {
+            const res = await authenticate(undefined, formData);
+            if (res?.success) {
+                window.location.href = '/dashboard';
+                return;
+            } else if (res?.error) {
+                setErrorMessage(res.error);
+                setPending(false);
+            } else {
+                window.location.href = '/dashboard';
+            }
+        } catch (err: any) {
+            console.error('Error al iniciar sesión:', err);
+            if (String(err).includes('NEXT_REDIRECT')) {
+                window.location.href = '/dashboard';
+                return;
+            }
+            setErrorMessage('Error de comunicación con el servidor. Intente de nuevo.');
+            setPending(false);
+        }
+    }
 
     return (
-        <form action={dispatch} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
             <div className="flex flex-col items-center mb-6">
                 <div className="w-24 h-24 relative mb-2">
                     <Image
@@ -16,6 +45,7 @@ export default function LoginForm() {
                         alt="Logo"
                         fill
                         className="object-contain"
+                        priority
                     />
                 </div>
                 <h2 className="text-xl font-bold text-slate-800">Cáritas Parroquial</h2>
@@ -56,20 +86,14 @@ export default function LoginForm() {
                     </p>
                 )}
             </div>
-            <LoginButton />
+            <button
+                type="submit"
+                disabled={pending}
+                className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                aria-disabled={pending}
+            >
+                {pending ? 'Ingresando...' : 'Ingresar al Sistema'}
+            </button>
         </form>
-    );
-}
-
-function LoginButton() {
-    const { pending } = useFormStatus();
-
-    return (
-        <button
-            className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            aria-disabled={pending}
-        >
-            {pending ? 'Ingresando...' : 'Ingresar al Sistema'}
-        </button>
     );
 }
