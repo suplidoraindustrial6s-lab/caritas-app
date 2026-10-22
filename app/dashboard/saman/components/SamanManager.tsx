@@ -292,14 +292,19 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
     const handleCrearJornada = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        const res = await crearJornadaSaman(nuevaJornadaForm);
-        setIsSubmitting(false);
-        if (res.success && res.data) {
-            setShowNewJornadaModal(false);
-            router.push(`/dashboard/saman?jornadaId=${res.data.id}`);
-            router.refresh();
-        } else {
-            alert(res.error || 'Error al crear la jornada');
+        try {
+            const res = await crearJornadaSaman(nuevaJornadaForm);
+            if (res.success && res.data) {
+                setShowNewJornadaModal(false);
+                window.location.href = `/dashboard/saman?jornadaId=${res.data.id}`;
+            } else {
+                alert(res.error || 'Error al crear la jornada');
+                setIsSubmitting(false);
+            }
+        } catch (err: any) {
+            console.error('Error al crear jornada:', err);
+            alert('Error de conexión o en el servidor al crear la jornada');
+            setIsSubmitting(false);
         }
     };
 
@@ -311,53 +316,59 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
             return;
         }
         setIsSubmitting(true);
-        const res = await registrarSamanNino({
-            ...ninoForm,
-            jornadaId: jornadaActiva.id,
-            estadoNutricional: estadoNutricionalNinoCalc,
-        });
-        setIsSubmitting(false);
-
-        if (res.success) {
-            // Limpiar campos del niño manteniendo cédula por si el representante tiene otro hijo, o limpiar todo
-            setNinoForm({
-                cedulaRepresentante: '',
-                edadRepresentante: 'Entre 18 - 49 años',
-                parentesco: 'MADRE',
-                grupoEtnico: 'Mestizo',
-                nombres: '',
-                apellidos: '',
-                sexo: 'FEMENINO',
-                fechaNacimiento: '',
-                tipoIngreso: 'DIAGNOSTICO INICIAL',
-                nroControl: 0,
-                discapacidad: 'NO',
-                detalleDiscapacidad: '',
-                edema: 'NO',
-                hemoglobina: '',
-                posicionMedida: 'AUTO',
-                longitudCabezaCm: '27.0',
-                cBrazoCm: '',
-                tallaCm: '',
-                pesoKg: '',
-                zScore: '',
-                zScoreManual: false,
-                desparasitado: 'NO',
-                micronutrientes: true,
-                cantMicronutrientes: 30,
-                plumpyAmarillo: false,
-                cantPlumpyAmarillo: 0,
-                plumpyRojo: false,
-                cantPlumpyRojo: 0,
-                plumpyMum: false,
-                cantPlumpyMum: 0,
-                observaciones: '',
+        try {
+            const res = await registrarSamanNino({
+                ...ninoForm,
+                jornadaId: jornadaActiva.id,
+                estadoNutricional: estadoNutricionalNinoCalc,
             });
-            setHistorialNinos([]);
-            setNinoHistoricoSeleccionado(null);
-            router.refresh();
-        } else {
-            alert(res.error || 'Error al guardar');
+
+            if (res.success) {
+                // Limpiar campos del niño manteniendo cédula por si el representante tiene otro hijo, o limpiar todo
+                setNinoForm({
+                    cedulaRepresentante: '',
+                    edadRepresentante: 'Entre 18 - 49 años',
+                    parentesco: 'MADRE',
+                    grupoEtnico: 'Mestizo',
+                    nombres: '',
+                    apellidos: '',
+                    sexo: 'FEMENINO',
+                    fechaNacimiento: '',
+                    tipoIngreso: 'DIAGNOSTICO INICIAL',
+                    nroControl: 0,
+                    discapacidad: 'NO',
+                    detalleDiscapacidad: '',
+                    edema: 'NO',
+                    hemoglobina: '',
+                    posicionMedida: 'AUTO',
+                    longitudCabezaCm: '27.0',
+                    cBrazoCm: '',
+                    tallaCm: '',
+                    pesoKg: '',
+                    zScore: '',
+                    zScoreManual: false,
+                    desparasitado: 'NO',
+                    micronutrientes: true,
+                    cantMicronutrientes: 30,
+                    plumpyAmarillo: false,
+                    cantPlumpyAmarillo: 0,
+                    plumpyRojo: false,
+                    cantPlumpyRojo: 0,
+                    plumpyMum: false,
+                    cantPlumpyMum: 0,
+                    observaciones: '',
+                });
+                setHistorialNinos([]);
+                setNinoHistoricoSeleccionado(null);
+                router.refresh();
+            } else {
+                alert(res.error || 'Error al guardar');
+            }
+        } catch (err: any) {
+            console.error('Error al guardar niño:', err);
+            alert('Error de conexión o en el servidor al guardar el registro');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -369,41 +380,47 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
             return;
         }
         setIsSubmitting(true);
-        const res = await registrarSamanEmbarazada({
-            ...melForm,
-            jornadaId: jornadaActiva.id,
-            clasificacionNutricional: clasificacionImcMelCalc,
-            clasificacionPb: clasificacionPbMelCalc,
-        });
-        setIsSubmitting(false);
-
-        if (res.success) {
-            setMelForm({
-                cedula: '',
-                nombre: '',
-                apellido: '',
-                fechaNacimiento: '',
-                grupoEtnico: 'Mestizo',
-                tipoIngreso: 'DIAGNOSTICO INICIAL',
-                estadoEmbarazoLactancia: 'EMBARAZADA',
-                semanaGestacion: '',
-                edema: 'No',
-                pesoKg: '',
-                tallaCm: '',
-                cBrazoCm: '',
-                desparasitada: 'NO',
-                tratamiento: 'Hierro+Ácido Fólico',
-                cantidad: 30,
-                plumpyMum: false,
-                cantPlumpyMum: 0,
-                micronutrientes: true,
-                cantMicronutrientes: 30,
-                observaciones: '',
+        try {
+            const res = await registrarSamanEmbarazada({
+                ...melForm,
+                jornadaId: jornadaActiva.id,
+                clasificacionNutricional: clasificacionImcMelCalc,
+                clasificacionPb: clasificacionPbMelCalc,
             });
-            setHistorialMel(null);
-            router.refresh();
-        } else {
-            alert(res.error || 'Error al guardar');
+
+            if (res.success) {
+                setMelForm({
+                    cedula: '',
+                    nombre: '',
+                    apellido: '',
+                    fechaNacimiento: '',
+                    grupoEtnico: 'Mestizo',
+                    tipoIngreso: 'DIAGNOSTICO INICIAL',
+                    estadoEmbarazoLactancia: 'EMBARAZADA',
+                    semanaGestacion: '',
+                    edema: 'No',
+                    pesoKg: '',
+                    tallaCm: '',
+                    cBrazoCm: '',
+                    desparasitada: 'NO',
+                    tratamiento: 'Hierro+Ácido Fólico',
+                    cantidad: 30,
+                    plumpyMum: false,
+                    cantPlumpyMum: 0,
+                    micronutrientes: true,
+                    cantMicronutrientes: 30,
+                    observaciones: '',
+                });
+                setHistorialMel(null);
+                router.refresh();
+            } else {
+                alert(res.error || 'Error al guardar');
+            }
+        } catch (err: any) {
+            console.error('Error al guardar MEL:', err);
+            alert('Error de conexión o en el servidor al guardar el registro');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
