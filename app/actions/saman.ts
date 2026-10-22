@@ -2,6 +2,7 @@
 
 import prisma from '@/app/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { asegurarJornadasOficiales } from '@/app/lib/saman-initial-sync';
 import {
     calcularEdadMeses,
     calcularRangoEdad,
@@ -105,6 +106,9 @@ function calcularIndicadoresJornada(ninos: any[], embarazadas: any[]) {
  */
 export async function obtenerDatosModuloSaman(jornadaIdSeleccionada?: number) {
     try {
+        // Asegurar que las jornadas oficiales (19 sept con 18 niños y 1 embarazada, y 15 oct) existan y limpiar pruebas
+        await asegurarJornadasOficiales();
+
         let jornadas = await prisma.jornadasSAMAN.findMany({
             orderBy: { fecha: 'desc' },
             include: {

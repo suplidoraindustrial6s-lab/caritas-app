@@ -627,8 +627,8 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                         </select>
                     </div>
 
-                    {/* Botón Eliminar Jornada Vacía (solo si no tiene pacientes registrados y hay más de una jornada) */}
-                    {(jornadaActiva?.ninos?.length || 0) === 0 && (jornadaActiva?.embarazadas?.length || 0) === 0 && jornadas.length > 1 && (
+                    {/* Botón Eliminar Jornada Vacía (solo si no tiene pacientes registrados) */}
+                    {(jornadaActiva?.ninos?.length || 0) === 0 && (jornadaActiva?.embarazadas?.length || 0) === 0 && (
                         <button
                             type="button"
                             onClick={async () => {
