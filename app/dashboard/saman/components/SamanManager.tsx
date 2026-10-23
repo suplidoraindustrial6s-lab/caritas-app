@@ -120,6 +120,12 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
         cantPlumpyRojo: 0,
         plumpyMum: false,
         cantPlumpyMum: 0,
+        fechaInicioVivero: '',
+        fechaSalidaVivero: '',
+        zScoreEntrada: '',
+        zScoreSalida: '',
+        semanasVivero: '',
+        situacionSalida: 'RECUPERADO',
         observaciones: '',
     });
 
@@ -255,6 +261,31 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
         const fechaNacStr = hist.fechaNacimiento
             ? new Date(hist.fechaNacimiento).toISOString().slice(0, 10)
             : '';
+
+        // Determinación inteligente según las 4 premisas de Cáritas:
+        // 1. Diagnóstico Inicial -> Control 0
+        // 2. Monitoreo regular -> Control + 1
+        // 3. Salida de Vivero (recuperado) -> Control 0
+        // 4. Reingreso (tras salida o inasistencia) -> Control 0 (o nro de reingresos)
+        const tipoSugerido = hist.sugeridoTipo || 'MONITOREO';
+        const controlSugerido = hist.sugeridoControl ?? ((Number(hist.nroControlPrevio) || 0) + 1);
+
+        // Pre-calcular datos de Vivero si sugiere o aplica Salida de Vivero
+        const fechaIniStr = hist.fechaInicioVivero
+            ? new Date(hist.fechaInicioVivero).toISOString().slice(0, 10)
+            : '';
+        const fechaSalStr = jornadaActiva?.fecha
+            ? new Date(jornadaActiva.fecha).toISOString().slice(0, 10)
+            : new Date().toISOString().slice(0, 10);
+
+        let semCalc = 8;
+        if (fechaIniStr && fechaSalStr) {
+            const diffDays = Math.round(
+                Math.abs(new Date(fechaSalStr).getTime() - new Date(fechaIniStr).getTime()) / (1000 * 60 * 60 * 24)
+            );
+            semCalc = Math.min(12, Math.max(1, Math.round(diffDays / 7)));
+        }
+
         setNinoForm((prev) => ({
             ...prev,
             edadRepresentante: hist.edadRepresentante || prev.edadRepresentante,
@@ -264,10 +295,16 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
             apellidos: hist.apellidos || '',
             sexo: hist.sexo || 'FEMENINO',
             fechaNacimiento: fechaNacStr,
-            tipoIngreso: 'MONITOREO',
-            nroControl: (Number(hist.nroControlPrevio) || 0) + 1,
+            tipoIngreso: tipoSugerido,
+            nroControl: controlSugerido,
             discapacidad: hist.discapacidad || 'NO',
             detalleDiscapacidad: hist.detalleDiscapacidad || '',
+            fechaInicioVivero: fechaIniStr,
+            fechaSalidaVivero: fechaSalStr,
+            zScoreEntrada: hist.zScoreEntrada !== null && hist.zScoreEntrada !== undefined ? String(hist.zScoreEntrada) : '',
+            zScoreSalida: prev.zScore || '',
+            semanasVivero: String(semCalc),
+            situacionSalida: 'RECUPERADO',
         }));
     };
 
@@ -357,6 +394,12 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                     cantPlumpyRojo: 0,
                     plumpyMum: false,
                     cantPlumpyMum: 0,
+                    fechaInicioVivero: '',
+                    fechaSalidaVivero: '',
+                    zScoreEntrada: '',
+                    zScoreSalida: '',
+                    semanasVivero: '',
+                    situacionSalida: 'RECUPERADO',
                     observaciones: '',
                 });
                 setHistorialNinos([]);
@@ -960,7 +1003,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                         )}
 
                         {/* BLOQUE 1: DATOS DEL CUIDADOR Y DEL NIÑO */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 items-start">
                             <div>
                                 <label className="block text-xs font-bold text-slate-700 mb-1">
                                     Cédula Madre / Representante *
@@ -975,6 +1018,20 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                     onChange={(e) => setNinoForm({ ...ninoForm, cedulaRepresentante: e.target.value })}
                                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 bg-slate-50/50"
                                 />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Grupo Étnico</label>
+                                <select
+                                    value={ninoForm.grupoEtnico}
+                                    onChange={(e) => setNinoForm({ ...ninoForm, grupoEtnico: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-semibold text-slate-800"
+                                >
+                                    <option value="Mestizo">Mestizo (Mayoría)</option>
+                                    <option value="Indígena">Indígena</option>
+                                    <option value="Afrodescendiente">Afrodescendiente</option>
+                                    <option value="SD">SD (Sin Determinar)</option>
+                                </select>
                             </div>
 
                             <div>
@@ -1014,13 +1071,79 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                 <label className="block text-xs font-bold text-slate-700 mb-1">Tipo de Ingreso</label>
                                 <select
                                     value={ninoForm.tipoIngreso}
-                                    onChange={(e) => setNinoForm({ ...ninoForm, tipoIngreso: e.target.value })}
+                                    onChange={(e) => {
+                                        const nuevoTipo = e.target.value;
+                                        let nuevoControl = ninoForm.nroControl;
+                                        let nuevoInicioVivero = ninoForm.fechaInicioVivero;
+                                        let nuevoSalidaVivero = ninoForm.fechaSalidaVivero;
+                                        let nuevoZEntrada = ninoForm.zScoreEntrada;
+                                        let nuevoZSalida = ninoForm.zScoreSalida;
+                                        let nuevoSemanas = ninoForm.semanasVivero;
+                                        let nuevaSituacion = ninoForm.situacionSalida || 'RECUPERADO';
+
+                                        if (nuevoTipo === 'SALIDA DE VIVERO') {
+                                            nuevoControl = 0;
+                                            nuevoInicioVivero = ninoHistoricoSeleccionado?.fechaInicioVivero
+                                                ? new Date(ninoHistoricoSeleccionado.fechaInicioVivero).toISOString().slice(0, 10)
+                                                : ninoForm.fechaInicioVivero;
+                                            nuevoSalidaVivero = jornadaActiva?.fecha
+                                                ? new Date(jornadaActiva.fecha).toISOString().slice(0, 10)
+                                                : new Date().toISOString().slice(0, 10);
+                                            nuevoZEntrada = ninoHistoricoSeleccionado?.zScoreEntrada !== null && ninoHistoricoSeleccionado?.zScoreEntrada !== undefined
+                                                ? String(ninoHistoricoSeleccionado.zScoreEntrada)
+                                                : ninoForm.zScoreEntrada;
+                                            nuevoZSalida = ninoForm.zScore || '';
+
+                                            if (nuevoInicioVivero && nuevoSalidaVivero) {
+                                                const diff = Math.round(
+                                                    Math.abs(new Date(nuevoSalidaVivero).getTime() - new Date(nuevoInicioVivero).getTime()) /
+                                                        (1000 * 60 * 60 * 24)
+                                                );
+                                                nuevoSemanas = String(Math.min(12, Math.max(1, Math.round(diff / 7))));
+                                            }
+                                        } else if (nuevoTipo === 'DIAGNOSTICO INICIAL') {
+                                            nuevoControl = 0;
+                                        } else if (nuevoTipo === 'REINGRESO') {
+                                            nuevoControl = ninoHistoricoSeleccionado ? (ninoHistoricoSeleccionado.totalReingresos || 0) : 0;
+                                        } else if (nuevoTipo === 'MONITOREO') {
+                                            nuevoControl = ninoHistoricoSeleccionado
+                                                ? Math.max(1, (Number(ninoHistoricoSeleccionado.nroControlPrevio) || 0) + 1)
+                                                : 1;
+                                        }
+                                        setNinoForm({
+                                            ...ninoForm,
+                                            tipoIngreso: nuevoTipo,
+                                            nroControl: nuevoControl,
+                                            fechaInicioVivero: nuevoInicioVivero,
+                                            fechaSalidaVivero: nuevoSalidaVivero,
+                                            zScoreEntrada: nuevoZEntrada,
+                                            zScoreSalida: nuevoZSalida,
+                                            semanasVivero: nuevoSemanas,
+                                            situacionSalida: nuevaSituacion,
+                                        });
+                                    }}
                                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"
                                 >
                                     <option value="DIAGNOSTICO INICIAL">DIAGNÓSTICO INICIAL</option>
                                     <option value="MONITOREO">MONITOREO</option>
                                     <option value="REINGRESO">REINGRESO</option>
                                     <option value="SALIDA DE VIVERO">SALIDA DE VIVERO</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">N° Control / Semana</label>
+                                <select
+                                    value={ninoForm.nroControl}
+                                    onChange={(e) => setNinoForm({ ...ninoForm, nroControl: Number(e.target.value) })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-semibold text-slate-800"
+                                >
+                                    <option value={0}>0 (Inicial / Salida / 1er Reingreso)</option>
+                                    {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
+                                        <option key={num} value={num}>
+                                            {num} ({num === 1 ? '1er Monitoreo' : `${num}° Monitoreo / Sem ${num}`})
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
 
@@ -1242,6 +1365,137 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                             </div>
                         </div>
 
+                        {/* BLOQUE VIVERO / SALIDA: VISIBLE EXCLUSIVAMENTE SI ES SALIDA DE VIVERO */}
+                        {ninoForm.tipoIngreso === 'SALIDA DE VIVERO' && (
+                            <div className="bg-emerald-50/70 border border-emerald-300 rounded-2xl p-4 space-y-3 animate-in fade-in duration-200">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shadow-xs">
+                                            ✓
+                                        </span>
+                                        <div>
+                                            <h4 className="text-xs font-bold text-emerald-950 uppercase tracking-wider">
+                                                Datos de Egreso y Cierre de Vivero (Cáritas)
+                                            </h4>
+                                            <p className="text-[11px] text-emerald-800">
+                                                Campos oficiales de la planilla (Columnas AJ a AO). Autocompletados con el historial del niño.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <span className="text-[11px] font-bold text-emerald-900 bg-white px-2.5 py-1 rounded-xl border border-emerald-200 shadow-2xs">
+                                        Salida de Vivero Activa
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 pt-1">
+                                    <div>
+                                        <label className="block text-[11px] font-bold text-emerald-950 mb-1">
+                                            F. Inicio Vivero *
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={ninoForm.fechaInicioVivero}
+                                            onChange={(e) => {
+                                                const inicio = e.target.value;
+                                                let sem = ninoForm.semanasVivero;
+                                                if (inicio && ninoForm.fechaSalidaVivero) {
+                                                    const diff = Math.round(
+                                                        Math.abs(new Date(ninoForm.fechaSalidaVivero).getTime() - new Date(inicio).getTime()) /
+                                                            (1000 * 60 * 60 * 24)
+                                                    );
+                                                    sem = String(Math.min(12, Math.max(1, Math.round(diff / 7))));
+                                                }
+                                                setNinoForm({ ...ninoForm, fechaInicioVivero: inicio, semanasVivero: sem });
+                                            }}
+                                            className="w-full px-3 py-2 rounded-xl border border-emerald-300 bg-white text-xs font-medium text-slate-800"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[11px] font-bold text-emerald-950 mb-1">
+                                            F. Salida Vivero *
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={ninoForm.fechaSalidaVivero}
+                                            onChange={(e) => {
+                                                const salida = e.target.value;
+                                                let sem = ninoForm.semanasVivero;
+                                                if (ninoForm.fechaInicioVivero && salida) {
+                                                    const diff = Math.round(
+                                                        Math.abs(new Date(salida).getTime() - new Date(ninoForm.fechaInicioVivero).getTime()) /
+                                                            (1000 * 60 * 60 * 24)
+                                                    );
+                                                    sem = String(Math.min(12, Math.max(1, Math.round(diff / 7))));
+                                                }
+                                                setNinoForm({ ...ninoForm, fechaSalidaVivero: salida, semanasVivero: sem });
+                                            }}
+                                            className="w-full px-3 py-2 rounded-xl border border-emerald-300 bg-white text-xs font-medium text-slate-800"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[11px] font-bold text-emerald-950 mb-1">
+                                            Z-Score Entrada
+                                        </label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="-2.50"
+                                            value={ninoForm.zScoreEntrada}
+                                            onChange={(e) => setNinoForm({ ...ninoForm, zScoreEntrada: e.target.value })}
+                                            className="w-full px-3 py-2 rounded-xl border border-emerald-300 bg-white text-xs font-bold text-slate-800"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[11px] font-bold text-emerald-950 mb-1">
+                                            Z-Score Salida
+                                        </label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="-0.80"
+                                            value={ninoForm.zScoreSalida || ninoForm.zScore}
+                                            onChange={(e) => setNinoForm({ ...ninoForm, zScoreSalida: e.target.value })}
+                                            className="w-full px-3 py-2 rounded-xl border border-emerald-300 bg-white text-xs font-bold text-emerald-700"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[11px] font-bold text-emerald-950 mb-1">
+                                            Semanas Vivero
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            max={12}
+                                            placeholder="8"
+                                            value={ninoForm.semanasVivero}
+                                            onChange={(e) => setNinoForm({ ...ninoForm, semanasVivero: e.target.value })}
+                                            className="w-full px-3 py-2 rounded-xl border border-emerald-300 bg-white text-xs font-bold text-slate-800 text-center"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[11px] font-bold text-emerald-950 mb-1">
+                                            Situación a la Salida *
+                                        </label>
+                                        <select
+                                            value={ninoForm.situacionSalida}
+                                            onChange={(e) => setNinoForm({ ...ninoForm, situacionSalida: e.target.value })}
+                                            className="w-full px-3 py-2 rounded-xl border border-emerald-300 bg-white text-xs font-bold text-slate-800"
+                                        >
+                                            <option value="RECUPERADO">RECUPERADO</option>
+                                            <option value="NO RECUPERADO">NO RECUPERADO</option>
+                                            <option value="ABANDONO PROGRAMA">ABANDONO PROGRAMA</option>
+                                            <option value="FALLECIDO">FALLECIDO</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* BLOQUE 3: TRATAMIENTOS ENTREGADOS SEGÚN PROTOCOLO CÁRITAS */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                             {/* Micronutrientes */}
@@ -1375,7 +1629,9 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                             <td className="py-3 px-4 font-bold text-slate-400">{idx + 1}</td>
                                             <td className="py-3 px-4">
                                                 <div className="font-bold text-slate-800">{n.cedulaRepresentante}</div>
-                                                <div className="text-[10px] text-slate-500">{n.parentesco} • {n.tipoIngreso}</div>
+                                                <div className="text-[10px] text-slate-500">
+                                                    {n.parentesco} • <span className="font-semibold text-primary">{n.tipoIngreso}</span> (Ctrl: {n.nroControl ?? 0})
+                                                </div>
                                             </td>
                                             <td className="py-3 px-4">
                                                 <div className="font-bold text-slate-900">{n.nombres} {n.apellidos}</div>
@@ -1482,6 +1738,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                         <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
                                             <div className="truncate pr-2">
                                                 <span className="font-semibold text-slate-700">C.I. Rep:</span> {n.cedulaRepresentante} ({n.parentesco})
+                                                <span className="font-semibold text-primary"> • {n.tipoIngreso}</span> (Ctrl: {n.nroControl ?? 0})
                                                 {n.tratamientoProtocolo && ` • ${n.tratamientoProtocolo}`}
                                             </div>
                                             <button
@@ -1605,6 +1862,19 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                     onChange={(e) => setMelForm({ ...melForm, cedula: e.target.value })}
                                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold bg-slate-50/50"
                                 />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Grupo Étnico</label>
+                                <select
+                                    value={melForm.grupoEtnico}
+                                    onChange={(e) => setMelForm({ ...melForm, grupoEtnico: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-semibold text-slate-800"
+                                >
+                                    <option value="Mestizo">Mestizo (Mayoría)</option>
+                                    <option value="Indígena">Indígena</option>
+                                    <option value="Afrodescendiente">Afrodescendiente</option>
+                                    <option value="SD">SD (Sin Determinar)</option>
+                                </select>
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-slate-700 mb-1">Nombres *</label>

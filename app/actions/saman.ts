@@ -238,38 +238,88 @@ export async function buscarHistorialNinoPorCedula(cedula: string) {
             take: 15,
         });
 
-        // Agrupar por nombre completo del niño para mostrar la última medición de cada hijo del representante
-        const mapaUltimaMedicion = new Map<string, any>();
+        // Agrupar por nombre completo del niño para obtener su historial y calcular evolución
+        const mapaNino = new Map<string, { registros: any[]; ultimo: any }>();
         for (const reg of registros) {
             const clave = `${reg.nombres.trim().toUpperCase()} ${reg.apellidos.trim().toUpperCase()}`;
-            if (!mapaUltimaMedicion.has(clave)) {
-                mapaUltimaMedicion.set(clave, {
-                    id: reg.id,
-                    cedulaRepresentante: reg.cedulaRepresentante,
-                    edadRepresentante: reg.edadRepresentante,
-                    parentesco: reg.parentesco,
-                    grupoEtnico: reg.grupoEtnico,
-                    nombres: reg.nombres,
-                    apellidos: reg.apellidos,
-                    sexo: reg.sexo,
-                    fechaNacimiento: reg.fechaNacimiento,
-                    discapacidad: reg.discapacidad,
-                    detalleDiscapacidad: reg.detalleDiscapacidad,
-                    ultimaFechaMedicion: reg.jornada.fecha,
-                    cBrazoCm: reg.cBrazoCm,
-                    tallaCm: reg.tallaCm,
-                    pesoKg: reg.pesoKg,
-                    zScore: reg.zScore,
-                    estadoNutricional: reg.estadoNutricional,
-                    clasificacionPb: reg.clasificacionPb,
-                    nroControlPrevio: reg.nroControl,
-                });
+            if (!mapaNino.has(clave)) {
+                mapaNino.set(clave, { registros: [reg], ultimo: reg });
+            } else {
+                mapaNino.get(clave)!.registros.push(reg);
             }
+        }
+
+        const data: any[] = [];
+        for (const { registros: histList, ultimo } of mapaNino.values()) {
+            const totalReingresos = histList.filter((r) => r.tipoIngreso === 'REINGRESO').length;
+            const ultimoTipo = ultimo.tipoIngreso || 'DIAGNOSTICO INICIAL';
+            const ultimoControl = Number(ultimo.nroControl) || 0;
+            const ultimoEstado = ultimo.estadoNutricional || '';
+            const ultimoZ = Number(ultimo.zScore) || 0;
+
+            // Encontrar el registro inicial (Diagnóstico Inicial) o el más antiguo en la lista cronológica
+            const registrosOrdenados = [...histList].sort(
+                (a, b) => new Date(a.jornada.fecha).getTime() - new Date(b.jornada.fecha).getTime()
+            );
+            const registroInicial =
+                registrosOrdenados.find((r) => r.tipoIngreso === 'DIAGNOSTICO INICIAL') || registrosOrdenados[0];
+
+            const fechaInicioVivero = registroInicial?.jornada?.fecha || null;
+            const zScoreEntrada = registroInicial ? Number(registroInicial.zScore) : null;
+
+            // Determinar tipo sugerido y número de control según las 4 premisas de Cáritas:
+            // 1. Diagnóstico Inicial -> Control 0
+            // 2. Monitoreo regular -> Control + 1
+            // 3. Salida de Vivero (recuperado) -> Control 0
+            // 4. Reingreso (tras salida o interrupción) -> Control 0 (o nro de reingresos previos)
+            let sugeridoTipo = 'MONITOREO';
+            let sugeridoControl = ultimoControl + 1;
+
+            if (ultimoTipo === 'SALIDA DE VIVERO') {
+                sugeridoTipo = 'REINGRESO';
+                sugeridoControl = totalReingresos;
+            } else if (ultimoTipo === 'REINGRESO') {
+                sugeridoTipo = 'MONITOREO';
+                sugeridoControl = 1;
+            } else if (ultimoControl >= 1 && (ultimoEstado === 'Adecuado' || ultimoZ >= -1.0)) {
+                // Si el niño ya avanzó bien en sus monitoreos, sugerir salida de vivero
+                sugeridoTipo = 'SALIDA DE VIVERO';
+                sugeridoControl = 0;
+            }
+
+            data.push({
+                id: ultimo.id,
+                cedulaRepresentante: ultimo.cedulaRepresentante,
+                edadRepresentante: ultimo.edadRepresentante,
+                parentesco: ultimo.parentesco,
+                grupoEtnico: ultimo.grupoEtnico,
+                nombres: ultimo.nombres,
+                apellidos: ultimo.apellidos,
+                sexo: ultimo.sexo,
+                fechaNacimiento: ultimo.fechaNacimiento,
+                discapacidad: ultimo.discapacidad,
+                detalleDiscapacidad: ultimo.detalleDiscapacidad,
+                ultimaFechaMedicion: ultimo.jornada.fecha,
+                cBrazoCm: ultimo.cBrazoCm,
+                tallaCm: ultimo.tallaCm,
+                pesoKg: ultimo.pesoKg,
+                zScore: ultimo.zScore,
+                estadoNutricional: ultimo.estadoNutricional,
+                clasificacionPb: ultimo.clasificacionPb,
+                ultimoTipoIngreso: ultimoTipo,
+                nroControlPrevio: ultimoControl,
+                totalReingresos,
+                totalVisitasPrevias: histList.length,
+                sugeridoTipo,
+                sugeridoControl,
+                fechaInicioVivero,
+                zScoreEntrada,
+            });
         }
 
         return {
             success: true,
-            data: Array.from(mapaUltimaMedicion.values()),
+            data,
         };
     } catch (error) {
         console.error('Error buscando historial de niño:', error);
@@ -410,6 +460,12 @@ export async function registrarSamanNino(datos: any) {
                 tratamientoProtocolo,
                 cantidadSuministrada,
                 otrosComplementos: datos.otrosComplementos || null,
+                fechaInicioVivero: datos.fechaInicioVivero ? new Date(datos.fechaInicioVivero + 'T12:00:00') : null,
+                fechaSalidaVivero: datos.fechaSalidaVivero ? new Date(datos.fechaSalidaVivero + 'T12:00:00') : null,
+                zScoreEntrada: datos.zScoreEntrada !== undefined && datos.zScoreEntrada !== null && datos.zScoreEntrada !== '' ? Number(datos.zScoreEntrada) : null,
+                zScoreSalida: datos.zScoreSalida !== undefined && datos.zScoreSalida !== null && datos.zScoreSalida !== '' ? Number(datos.zScoreSalida) : null,
+                semanasVivero: datos.semanasVivero !== undefined && datos.semanasVivero !== null && datos.semanasVivero !== '' ? Number(datos.semanasVivero) : null,
+                situacionSalida: datos.situacionSalida || null,
                 observaciones: datos.observaciones ? String(datos.observaciones).toUpperCase() : null,
             },
         });
