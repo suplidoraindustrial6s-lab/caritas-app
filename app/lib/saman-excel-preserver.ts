@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import JSZip from 'jszip';
 
 function escapeXml(str: any): string {
     if (str === null || str === undefined) return '';
@@ -73,7 +74,7 @@ export function buildNinoRowXml(nino: any, idx: number, jornada: any): string {
     c.push(cellVal('AB', r, nino.tallaCm, 128));
     c.push(cellVal('AC', r, nino.pesoKg, 128));
     c.push(cellVal('AD', r, nino.zScore, 635));
-    c.push(cellFormula('AE', r, `IF(ISBLANK(AD${r}),"ERROR",IF(AND(AD${r}>3,AD${r}<5),"Obesidad",IF(AND(AD${r}>2,AD${r}<=3),"Sobrepeso",IF(AND(AD${r}<=2,AD${r}>=-2),"Adecuado",IF(AND(AD${r}>=-3,AD${r}<-2),"Desnutrición aguda moderada",IF(AND(AD${r}<-3,AD${r}>-5),"Desnutrición aguda severa",IF(AD${r}<=-5,"Dato inválido",IF(AD${r}>=5,"Dato inválido"))))))))`, nino.estadoNutricional || 'Adecuado', 131));
+    c.push(cellFormula('AE', r, `IF(ISBLANK(AD${r}),"ERROR",IF(AND(AD${r}>3,AD${r}<5),"Obesidad",IF(AND(AD${r}>2,AD${r}<=3),"Sobrepeso",IF(AND(AD${r}<=2,AD${r}>=-2),"Adecuado",IF(AND(AD${r}>=-3,AD${r}<-2),"Desnutrición aguda moderada",IF(AND(AD${r}<3,AD${r}>-5),"Desnutrición aguda severa",IF(AD${r}<=-5,"Dato inválido",IF(AD${r}>=5,"Dato inválido"))))))))`, nino.estadoNutricional || 'Adecuado', 131));
     c.push(cellVal('AF', r, nino.desparasitado || 'NO', 479));
     c.push(cellVal('AG', r, nino.tratamientoProtocolo || 'Sin Tratamiento', 690));
     c.push(cellVal('AH', r, nino.cantidadSuministrada > 0 ? nino.cantidadSuministrada : '', 481));
@@ -164,56 +165,31 @@ export function patchWorksheetXml(originalXml: string, generatedRowsXml: string[
 }
 
 export async function exportSamanOficialZip(jornada: any, templatePath: string): Promise<Buffer> {
-    const yauzlModule = await import('yauzl');
-    const yauzl = yauzlModule.default || yauzlModule;
-    const archiverModule: any = await import('archiver');
-    const archiver = archiverModule.create || archiverModule.default || archiverModule;
+    const templateBuffer = fs.readFileSync(templatePath);
+    const zip = await JSZip.loadAsync(templateBuffer);
 
     const ninosRowsXml = (jornada.ninos || []).map((n: any, idx: number) => buildNinoRowXml(n, idx, jornada));
     const melRowsXml = (jornada.embarazadas || []).map((m: any, idx: number) => buildMelRowXml(m, idx, jornada));
 
-    return new Promise((resolve, reject) => {
-        yauzl.open(templatePath, { lazyEntries: true }, (err, zipfile) => {
-            if (err) return reject(err);
+    // Modificar 1. SAMAN NIÑOS (sheet6.xml)
+    const sheet6File = zip.file('xl/worksheets/sheet6.xml');
+    if (sheet6File) {
+        const sheet6Xml = await sheet6File.async('string');
+        const patched6 = patchWorksheetXml(sheet6Xml, ninosRowsXml);
+        zip.file('xl/worksheets/sheet6.xml', patched6);
+    }
 
-            const archive = archiver('zip', { zlib: { level: 6 } });
-            const buffers: Buffer[] = [];
+    // Modificar 2. SAMAN EMBARAZADAS (sheet7.xml)
+    const sheet7File = zip.file('xl/worksheets/sheet7.xml');
+    if (sheet7File) {
+        const sheet7Xml = await sheet7File.async('string');
+        const patched7 = patchWorksheetXml(sheet7Xml, melRowsXml);
+        zip.file('xl/worksheets/sheet7.xml', patched7);
+    }
 
-            archive.on('data', (d: Buffer) => buffers.push(d));
-            archive.on('end', () => resolve(Buffer.concat(buffers)));
-            archive.on('error', (e: any) => reject(e));
-
-            zipfile.readEntry();
-            zipfile.on('entry', (entry: any) => {
-                zipfile.openReadStream(entry, (errStream: any, readStream: any) => {
-                    if (errStream) return reject(errStream);
-
-                    const chunks: Buffer[] = [];
-                    readStream.on('data', (chunk: Buffer) => chunks.push(chunk));
-                    readStream.on('end', () => {
-                        let content = Buffer.concat(chunks);
-
-                        if (entry.fileName === 'xl/worksheets/sheet6.xml') {
-                            // 1. SAMAN NIÑOS
-                            const patched = patchWorksheetXml(content.toString('utf8'), ninosRowsXml);
-                            archive.append(Buffer.from(patched, 'utf8'), { name: entry.fileName });
-                        } else if (entry.fileName === 'xl/worksheets/sheet7.xml') {
-                            // 2. SAMAN EMBARAZADAS
-                            const patched = patchWorksheetXml(content.toString('utf8'), melRowsXml);
-                            archive.append(Buffer.from(patched, 'utf8'), { name: entry.fileName });
-                        } else {
-                            // Conservar exactamente intacto cualquier otro archivo (estilos, paletas, validaciones, temas)
-                            archive.append(content, { name: entry.fileName });
-                        }
-
-                        zipfile.readEntry();
-                    });
-                });
-            });
-
-            zipfile.on('end', () => {
-                archive.finalize();
-            });
-        });
+    return await zip.generateAsync({
+        type: 'nodebuffer',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 },
     });
 }
