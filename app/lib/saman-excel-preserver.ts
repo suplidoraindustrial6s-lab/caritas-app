@@ -63,8 +63,11 @@ export function buildNinoRowXml(nino: any, idx: number, jornada: any): string {
     c.push(cellVal('Q', r, nino.sexo, 125));
     c.push(cellVal('R', r, nino.fechaNacimiento, 127, true));
     c.push(cellVal('S', r, jornada.fecha, 127, true));
-    c.push(cellFormula('T', r, `IF(R${r}="","",(S${r}-R${r})/365)`, '', 133));
-    c.push(cellFormula('U', r, `IF(R${r}="","",IF(T${r}<=0.6,"0-6 meses",IF(T${r}<=2,"7-23 meses",IF(T${r}<=5,"24-59 meses",IF(T${r}>5,"Mayor a 5 años")))))`, '', 134));
+    const edadAnios = nino.edadMeses ? Number((nino.edadMeses / 12).toFixed(4)) : '';
+    const rangoEdad = nino.rangoEdad || '';
+
+    c.push(cellFormula('T', r, `IF(R${r}="","",(S${r}-R${r})/365)`, edadAnios ? String(edadAnios) : '', 133));
+    c.push(cellFormula('U', r, `IF(R${r}="","",IF(T${r}<=0.6,"0-6 meses",IF(T${r}<=2,"7-23 meses",IF(T${r}<=5,"24-59 meses",IF(T${r}>5,"Mayor a 5 años")))))`, rangoEdad, 134));
     c.push(cellVal('V', r, nino.discapacidad || 'NO', 125));
     c.push(cellVal('W', r, nino.detalleDiscapacidad || '', 125));
     c.push(cellVal('X', r, nino.edema || 'NO', 125));
@@ -128,7 +131,23 @@ export function buildMelRowXml(mel: any, idx: number, jornada: any): string {
     c.push(cellVal('N', r, mel.fechaNacimiento, 480, true));
     c.push(cellVal('O', r, mel.estadoEmbarazoLactancia || 'EMBARAZADA', 137));
     c.push(cellVal('P', r, mel.semanaGestacion || '', 139));
-    c.push(cellFormula('Q', r, `IF(N${r}="","",((YEAR(I${r})-YEAR(N${r}))*12+MONTH(I${r})-MONTH(N${r}))/12)`, '', 145));
+    const fechaMedicion = new Date(jornada.fecha);
+    const fechaNac = mel.fechaNacimiento ? new Date(mel.fechaNacimiento) : null;
+    let edadMel = '';
+    if (fechaNac) {
+        edadMel = String(
+            Number(
+                (
+                    ((fechaMedicion.getFullYear() - fechaNac.getFullYear()) * 12 +
+                        fechaMedicion.getMonth() -
+                        fechaNac.getMonth()) /
+                    12
+                ).toFixed(1)
+            )
+        );
+    }
+
+    c.push(cellFormula('Q', r, `IF(N${r}="","",((YEAR(I${r})-YEAR(N${r}))*12+MONTH(I${r})-MONTH(N${r}))/12)`, edadMel, 145));
     c.push(cellVal('R', r, mel.edema || 'No', 140));
     c.push(cellVal('S', r, mel.pesoKg, 141));
     c.push(cellVal('T', r, mel.tallaCm, 141));
@@ -185,6 +204,18 @@ export async function exportSamanOficialZip(jornada: any, templatePath: string):
         const sheet7Xml = await sheet7File.async('string');
         const patched7 = patchWorksheetXml(sheet7Xml, melRowsXml);
         zip.file('xl/worksheets/sheet7.xml', patched7);
+    }
+
+    // Forzar en workbook.xml el recálculo automático completo al abrir en Excel
+    const wbFile = zip.file('xl/workbook.xml');
+    if (wbFile) {
+        let wbXml = await wbFile.async('string');
+        if (wbXml.includes('<calcPr ')) {
+            wbXml = wbXml.replace(/<calcPr [^>]*\/>/, '<calcPr fullCalcOnLoad="1" forceFullCalc="1"/>');
+        } else {
+            wbXml = wbXml.replace('</workbook>', '<calcPr fullCalcOnLoad="1" forceFullCalc="1"/></workbook>');
+        }
+        zip.file('xl/workbook.xml', wbXml);
     }
 
     return await zip.generateAsync({
