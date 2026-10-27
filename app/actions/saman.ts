@@ -538,6 +538,162 @@ export async function registrarSamanEmbarazada(datos: any) {
 /**
  * Elimina un registro de niño/a de la jornada
  */
+export async function actualizarSamanNino(id: number, datos: any) {
+    try {
+        const registroExistente = await prisma.registroSamanNinos.findUnique({
+            where: { id },
+            include: { jornada: true },
+        });
+        if (!registroExistente) {
+            return { success: false, error: 'Registro de niño/a no encontrado' };
+        }
+
+        const fechaJornada = registroExistente.jornada?.fecha || new Date();
+        const pesoKg = Number(datos.pesoKg) || 0;
+        const tallaCm = Number(datos.tallaCm) || 0;
+        const cBrazoCm = Number(datos.cBrazoCm) || 0;
+        const zScore = Number(datos.zScore) || 0;
+        const fechaNac = new Date(datos.fechaNacimiento + 'T12:00:00');
+        const edadMeses = calcularEdadMeses(fechaNac, fechaJornada);
+        const rangoEdad = calcularRangoEdad(edadMeses);
+        const clasificacionPb = clasificarPbNino(cBrazoCm);
+        const estadoNutricional = datos.estadoNutricional || clasificarZScoreNino(zScore, edadMeses);
+
+        let tratamientoProtocolo = datos.tratamientoProtocolo || 'Sin Tratamiento';
+        let cantidadSuministrada = Number(datos.cantidadSuministrada) || 0;
+
+        if (datos.plumpyRojo) {
+            tratamientoProtocolo = zScore <= -3.01
+                ? 'Plumply NUT- sobre Rojo (DAS- Severa)'
+                : 'Plumply NUT- sobre Rojo (DAM-Moderada)';
+            cantidadSuministrada = Number(datos.cantPlumpyRojo) || 30;
+        } else if (datos.plumpyAmarillo) {
+            tratamientoProtocolo = 'Plumply DOZ- sobre Amarillo (6 a 23 meses)';
+            cantidadSuministrada = Number(datos.cantPlumpyAmarillo) || 30;
+        } else if (datos.micronutrientes) {
+            tratamientoProtocolo = 'Suplementación con micronutrientes (Vitaminas)';
+            cantidadSuministrada = Number(datos.cantMicronutrientes) || 30;
+        }
+
+        const actualizado = await prisma.registroSamanNinos.update({
+            where: { id },
+            data: {
+                cedulaRepresentante: String(datos.cedulaRepresentante).replace(/\D/g, '').trim(),
+                edadRepresentante: datos.edadRepresentante || 'Entre 18 - 49 años',
+                parentesco: (datos.parentesco || 'MADRE').toUpperCase(),
+                grupoEtnico: datos.grupoEtnico || 'Mestizo',
+                nombres: String(datos.nombres).trim().toUpperCase(),
+                apellidos: String(datos.apellidos).trim().toUpperCase(),
+                sexo: (datos.sexo || 'FEMENINO').toUpperCase(),
+                fechaNacimiento: fechaNac,
+                tipoIngreso: datos.tipoIngreso || 'DIAGNOSTICO INICIAL',
+                nroControl: Number(datos.nroControl) || 0,
+                discapacidad: datos.discapacidad || 'NO',
+                detalleDiscapacidad: datos.detalleDiscapacidad || null,
+                hemoglobina: datos.hemoglobina ? Number(datos.hemoglobina) : null,
+                desparasitado: datos.desparasitado || 'NO',
+                referidoMedico: datos.referidoMedico || 'NO',
+                proyectoTengo: datos.proyectoTengo || null,
+                pesoKg,
+                tallaCm,
+                posicionMedida: datos.posicionMedida || 'AUTO',
+                longitudCabezaCm: datos.longitudCabezaCm ? Number(datos.longitudCabezaCm) : 27.0,
+                cBrazoCm,
+                edema: datos.edema || 'NO',
+                edadMeses,
+                rangoEdad,
+                clasificacionPb,
+                zScore,
+                estadoNutricional,
+                micronutrientes: Boolean(datos.micronutrientes),
+                cantMicronutrientes: datos.micronutrientes ? (Number(datos.cantMicronutrientes) || 30) : 0,
+                plumpyAmarillo: Boolean(datos.plumpyAmarillo),
+                cantPlumpyAmarillo: datos.plumpyAmarillo ? (Number(datos.cantPlumpyAmarillo) || 30) : 0,
+                plumpyRojo: Boolean(datos.plumpyRojo),
+                cantPlumpyRojo: datos.plumpyRojo ? (Number(datos.cantPlumpyRojo) || 30) : 0,
+                plumpyMum: Boolean(datos.plumpyMum),
+                cantPlumpyMum: datos.plumpyMum ? (Number(datos.cantPlumpyMum) || 30) : 0,
+                tratamientoProtocolo,
+                cantidadSuministrada,
+                otrosComplementos: datos.otrosComplementos || null,
+                fechaInicioVivero: datos.fechaInicioVivero ? new Date(datos.fechaInicioVivero + 'T12:00:00') : null,
+                fechaSalidaVivero: datos.fechaSalidaVivero ? new Date(datos.fechaSalidaVivero + 'T12:00:00') : null,
+                zScoreEntrada: datos.zScoreEntrada !== undefined && datos.zScoreEntrada !== null && datos.zScoreEntrada !== '' ? Number(datos.zScoreEntrada) : null,
+                zScoreSalida: datos.zScoreSalida !== undefined && datos.zScoreSalida !== null && datos.zScoreSalida !== '' ? Number(datos.zScoreSalida) : null,
+                semanasVivero: datos.semanasVivero !== undefined && datos.semanasVivero !== null && datos.semanasVivero !== '' ? Number(datos.semanasVivero) : null,
+                situacionSalida: datos.situacionSalida || null,
+                observaciones: datos.observaciones ? String(datos.observaciones).toUpperCase() : null,
+            },
+        });
+
+        revalidatePath('/dashboard/saman');
+        return { success: true, data: actualizado };
+    } catch (error) {
+        console.error('Error al actualizar niño en SAMÁN:', error);
+        return { success: false, error: 'Error al actualizar el registro del niño/a' };
+    }
+}
+
+/**
+ * Actualiza una evaluación nutricional de Mujer Embarazada / Lactante (MEL)
+ */
+export async function actualizarSamanEmbarazada(id: number, datos: any) {
+    try {
+        const registroExistente = await prisma.registroSamanEmbarazadas.findUnique({
+            where: { id },
+        });
+        if (!registroExistente) {
+            return { success: false, error: 'Registro MEL no encontrado' };
+        }
+
+        const pesoKg = Number(datos.pesoKg) || 0;
+        const tallaCm = Number(datos.tallaCm) || 0;
+        const cBrazoCm = Number(datos.cBrazoCm) || 0;
+        const imc = calcularImcMel(pesoKg, tallaCm);
+        const clasificacionNutricional = datos.clasificacionNutricional || clasificarImcMel(imc);
+        const clasificacionPb = datos.clasificacionPb || clasificarPbMel(cBrazoCm);
+        const fechaNac = new Date(datos.fechaNacimiento + 'T12:00:00');
+
+        const actualizado = await prisma.registroSamanEmbarazadas.update({
+            where: { id },
+            data: {
+                nombre: String(datos.nombre).trim().toUpperCase(),
+                apellido: String(datos.apellido).trim().toUpperCase(),
+                cedula: String(datos.cedula).replace(/\D/g, '').trim(),
+                fechaNacimiento: fechaNac,
+                grupoEtnico: datos.grupoEtnico || 'Mestizo',
+                tipoIngreso: datos.tipoIngreso || 'DIAGNOSTICO INICIAL',
+                estadoEmbarazoLactancia: datos.estadoEmbarazoLactancia || 'EMBARAZADA',
+                semanaGestacion: datos.semanaGestacion ? Number(datos.semanaGestacion) : null,
+                edema: datos.edema || 'No',
+                pesoKg,
+                tallaCm,
+                imc,
+                clasificacionNutricional,
+                cBrazoCm,
+                clasificacionPb,
+                desparasitada: datos.desparasitada || 'NO',
+                tratamiento: datos.tratamiento || 'Hierro+Ácido Fólico',
+                cantidad: Number(datos.cantidad) || 30,
+                plumpyMum: Boolean(datos.plumpyMum),
+                cantPlumpyMum: datos.plumpyMum ? (Number(datos.cantPlumpyMum) || 30) : 0,
+                micronutrientes: Boolean(datos.micronutrientes),
+                cantMicronutrientes: datos.micronutrientes ? (Number(datos.cantMicronutrientes) || 30) : 0,
+                observaciones: datos.observaciones ? String(datos.observaciones).toUpperCase() : null,
+            },
+        });
+
+        revalidatePath('/dashboard/saman');
+        return { success: true, data: actualizado };
+    } catch (error) {
+        console.error('Error al actualizar MEL en SAMÁN:', error);
+        return { success: false, error: 'Error al actualizar el registro de la paciente MEL' };
+    }
+}
+
+/**
+ * Elimina un registro de niño/a de la jornada
+ */
 export async function eliminarRegistroSamanNino(id: number) {
     try {
         await prisma.registroSamanNinos.delete({ where: { id } });

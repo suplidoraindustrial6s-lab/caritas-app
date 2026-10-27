@@ -24,13 +24,17 @@ import {
     UserCheck,
     ChevronDown,
     ChevronUp,
+    Edit,
+    X,
 } from 'lucide-react';
 import {
     crearJornadaSaman,
     buscarHistorialNinoPorCedula,
     buscarHistorialMelPorCedula,
     registrarSamanNino,
+    actualizarSamanNino,
     registrarSamanEmbarazada,
+    actualizarSamanEmbarazada,
     eliminarRegistroSamanNino,
     eliminarRegistroSamanEmbarazada,
     eliminarJornadaSaman,
@@ -133,6 +137,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
     const [historialNinos, setHistorialNinos] = useState<any[]>([]);
     const [ninoHistoricoSeleccionado, setNinoHistoricoSeleccionado] = useState<any | null>(null);
     const [buscandoHistorialNino, setBuscandoHistorialNino] = useState(false);
+    const [editandoNinoId, setEditandoNinoId] = useState<number | null>(null);
 
     // ==========================================
     // ESTADO FORMULARIO 2: SAMÁN EMBARAZADAS/LACTANTES (MEL)
@@ -162,6 +167,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
 
     const [historialMel, setHistorialMel] = useState<any | null>(null);
     const [buscandoHistorialMel, setBuscandoHistorialMel] = useState(false);
+    const [editandoMelId, setEditandoMelId] = useState<number | null>(null);
 
     // Búsqueda automática en tiempo real de historial por Cédula (Niños)
     useEffect(() => {
@@ -326,6 +332,177 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
         }));
     };
 
+    // Funciones de Edición de Registros Existentes - SAMÁN Niños
+    const iniciarEdicionNino = (n: any) => {
+        setEditandoNinoId(n.id);
+        const fechaNacStr = n.fechaNacimiento
+            ? new Date(n.fechaNacimiento).toISOString().slice(0, 10)
+            : '';
+        const iniVivStr = n.fechaInicioVivero
+            ? new Date(n.fechaInicioVivero).toISOString().slice(0, 10)
+            : '';
+        const salVivStr = n.fechaSalidaVivero
+            ? new Date(n.fechaSalidaVivero).toISOString().slice(0, 10)
+            : '';
+
+        setNinoForm({
+            cedulaRepresentante: n.cedulaRepresentante || '',
+            edadRepresentante: n.edadRepresentante || 'Entre 18 - 49 años',
+            parentesco: n.parentesco || 'MADRE',
+            grupoEtnico: n.grupoEtnico || 'Mestizo',
+            nombres: n.nombres || '',
+            apellidos: n.apellidos || '',
+            sexo: n.sexo || 'FEMENINO',
+            fechaNacimiento: fechaNacStr,
+            tipoIngreso: n.tipoIngreso || 'DIAGNOSTICO INICIAL',
+            nroControl: Number(n.nroControl) || 0,
+            discapacidad: n.discapacidad || 'NO',
+            detalleDiscapacidad: n.detalleDiscapacidad || '',
+            edema: n.edema || 'NO',
+            hemoglobina: n.hemoglobina ? String(n.hemoglobina) : '',
+            posicionMedida: n.posicionMedida || 'AUTO',
+            longitudCabezaCm: n.longitudCabezaCm ? String(n.longitudCabezaCm) : '27.0',
+            cBrazoCm: n.cBrazoCm ? String(n.cBrazoCm) : '',
+            tallaCm: n.tallaCm ? String(n.tallaCm) : '',
+            pesoKg: n.pesoKg ? String(n.pesoKg) : '',
+            zScore: n.zScore !== undefined && n.zScore !== null ? String(n.zScore) : '',
+            zScoreManual: true,
+            desparasitado: n.desparasitado || 'NO',
+            micronutrientes: Boolean(n.micronutrientes),
+            cantMicronutrientes: n.cantMicronutrientes || 30,
+            plumpyAmarillo: Boolean(n.plumpyAmarillo),
+            cantPlumpyAmarillo: n.cantPlumpyAmarillo || 0,
+            plumpyRojo: Boolean(n.plumpyRojo),
+            cantPlumpyRojo: n.cantPlumpyRojo || 0,
+            plumpyMum: Boolean(n.plumpyMum),
+            cantPlumpyMum: n.cantPlumpyMum || 0,
+            fechaInicioVivero: iniVivStr,
+            fechaSalidaVivero: salVivStr,
+            zScoreEntrada: n.zScoreEntrada !== null && n.zScoreEntrada !== undefined ? String(n.zScoreEntrada) : '',
+            zScoreSalida: n.zScoreSalida !== null && n.zScoreSalida !== undefined ? String(n.zScoreSalida) : '',
+            semanasVivero: n.semanasVivero !== null && n.semanasVivero !== undefined ? String(n.semanasVivero) : '',
+            situacionSalida: n.situacionSalida || 'RECUPERADO',
+            observaciones: n.observaciones || '',
+        });
+
+        // Desplazarse suavemente al formulario
+        setTimeout(() => {
+            const el = document.getElementById('form-saman-ninos');
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 50);
+    };
+
+    const cancelarEdicionNino = () => {
+        setEditandoNinoId(null);
+        setNinoForm({
+            cedulaRepresentante: '',
+            edadRepresentante: 'Entre 18 - 49 años',
+            parentesco: 'MADRE',
+            grupoEtnico: 'Mestizo',
+            nombres: '',
+            apellidos: '',
+            sexo: 'FEMENINO',
+            fechaNacimiento: '',
+            tipoIngreso: 'DIAGNOSTICO INICIAL',
+            nroControl: 0,
+            discapacidad: 'NO',
+            detalleDiscapacidad: '',
+            edema: 'NO',
+            hemoglobina: '',
+            posicionMedida: 'AUTO',
+            longitudCabezaCm: '27.0',
+            cBrazoCm: '',
+            tallaCm: '',
+            pesoKg: '',
+            zScore: '',
+            zScoreManual: false,
+            desparasitado: 'NO',
+            micronutrientes: true,
+            cantMicronutrientes: 30,
+            plumpyAmarillo: false,
+            cantPlumpyAmarillo: 0,
+            plumpyRojo: false,
+            cantPlumpyRojo: 0,
+            plumpyMum: false,
+            cantPlumpyMum: 0,
+            fechaInicioVivero: '',
+            fechaSalidaVivero: '',
+            zScoreEntrada: '',
+            zScoreSalida: '',
+            semanasVivero: '',
+            situacionSalida: 'RECUPERADO',
+            observaciones: '',
+        });
+        setHistorialNinos([]);
+        setNinoHistoricoSeleccionado(null);
+    };
+
+    // Funciones de Edición de Registros Existentes - SAMÁN MEL
+    const iniciarEdicionMel = (m: any) => {
+        setEditandoMelId(m.id);
+        const fechaNacStr = m.fechaNacimiento
+            ? new Date(m.fechaNacimiento).toISOString().slice(0, 10)
+            : '';
+        setMelForm({
+            cedula: m.cedula || '',
+            nombre: m.nombre || '',
+            apellido: m.apellido || '',
+            fechaNacimiento: fechaNacStr,
+            grupoEtnico: m.grupoEtnico || 'Mestizo',
+            tipoIngreso: m.tipoIngreso || 'DIAGNOSTICO INICIAL',
+            estadoEmbarazoLactancia: m.estadoEmbarazoLactancia || 'EMBARAZADA',
+            semanaGestacion: m.semanaGestacion ? String(m.semanaGestacion) : '',
+            edema: m.edema || 'No',
+            pesoKg: m.pesoKg ? String(m.pesoKg) : '',
+            tallaCm: m.tallaCm ? String(m.tallaCm) : '',
+            cBrazoCm: m.cBrazoCm ? String(m.cBrazoCm) : '',
+            desparasitada: m.desparasitada || 'NO',
+            tratamiento: m.tratamiento === 'Plumpy Mom' ? 'Plumpy Mum' : (m.tratamiento || 'Hierro+Ácido Fólico'),
+            cantidad: Number(m.cantidad) || 30,
+            plumpyMum: Boolean(m.plumpyMum) || String(m.tratamiento).toLowerCase().includes('plumpy'),
+            cantPlumpyMum: m.cantPlumpyMum || 0,
+            micronutrientes: Boolean(m.micronutrientes),
+            cantMicronutrientes: m.cantMicronutrientes || 30,
+            observaciones: m.observaciones || '',
+        });
+
+        setTimeout(() => {
+            const el = document.getElementById('form-saman-mel');
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 50);
+    };
+
+    const cancelarEdicionMel = () => {
+        setEditandoMelId(null);
+        setMelForm({
+            cedula: '',
+            nombre: '',
+            apellido: '',
+            fechaNacimiento: '',
+            grupoEtnico: 'Mestizo',
+            tipoIngreso: 'DIAGNOSTICO INICIAL',
+            estadoEmbarazoLactancia: 'EMBARAZADA',
+            semanaGestacion: '',
+            edema: 'No',
+            pesoKg: '',
+            tallaCm: '',
+            cBrazoCm: '',
+            desparasitada: 'NO',
+            tratamiento: 'Hierro+Ácido Fólico',
+            cantidad: 30,
+            plumpyMum: false,
+            cantPlumpyMum: 0,
+            micronutrientes: true,
+            cantMicronutrientes: 30,
+            observaciones: '',
+        });
+        setHistorialMel(null);
+    };
+
     // Guardar nueva jornada SAMÁN
     const handleCrearJornada = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -346,7 +523,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
         }
     };
 
-    // Guardar evaluación de Niño/a
+    // Guardar o Actualizar evaluación de Niño/a
     const handleGuardarNino = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!ninoForm.cedulaRepresentante || !ninoForm.nombres || !ninoForm.apellidos || !ninoForm.fechaNacimiento) {
@@ -355,68 +532,40 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
         }
         setIsSubmitting(true);
         try {
-            const res = await registrarSamanNino({
-                ...ninoForm,
-                jornadaId: jornadaActiva.id,
-                estadoNutricional: estadoNutricionalNinoCalc,
-            });
-
-            if (res.success) {
-                // Limpiar campos del niño manteniendo cédula por si el representante tiene otro hijo, o limpiar todo
-                setNinoForm({
-                    cedulaRepresentante: '',
-                    edadRepresentante: 'Entre 18 - 49 años',
-                    parentesco: 'MADRE',
-                    grupoEtnico: 'Mestizo',
-                    nombres: '',
-                    apellidos: '',
-                    sexo: 'FEMENINO',
-                    fechaNacimiento: '',
-                    tipoIngreso: 'DIAGNOSTICO INICIAL',
-                    nroControl: 0,
-                    discapacidad: 'NO',
-                    detalleDiscapacidad: '',
-                    edema: 'NO',
-                    hemoglobina: '',
-                    posicionMedida: 'AUTO',
-                    longitudCabezaCm: '27.0',
-                    cBrazoCm: '',
-                    tallaCm: '',
-                    pesoKg: '',
-                    zScore: '',
-                    zScoreManual: false,
-                    desparasitado: 'NO',
-                    micronutrientes: true,
-                    cantMicronutrientes: 30,
-                    plumpyAmarillo: false,
-                    cantPlumpyAmarillo: 0,
-                    plumpyRojo: false,
-                    cantPlumpyRojo: 0,
-                    plumpyMum: false,
-                    cantPlumpyMum: 0,
-                    fechaInicioVivero: '',
-                    fechaSalidaVivero: '',
-                    zScoreEntrada: '',
-                    zScoreSalida: '',
-                    semanasVivero: '',
-                    situacionSalida: 'RECUPERADO',
-                    observaciones: '',
+            if (editandoNinoId) {
+                const res = await actualizarSamanNino(editandoNinoId, {
+                    ...ninoForm,
+                    estadoNutricional: estadoNutricionalNinoCalc,
                 });
-                setHistorialNinos([]);
-                setNinoHistoricoSeleccionado(null);
-                router.refresh();
+                if (res.success) {
+                    cancelarEdicionNino();
+                    router.refresh();
+                } else {
+                    alert(res.error || 'Error al actualizar el registro');
+                }
             } else {
-                alert(res.error || 'Error al guardar');
+                const res = await registrarSamanNino({
+                    ...ninoForm,
+                    jornadaId: jornadaActiva.id,
+                    estadoNutricional: estadoNutricionalNinoCalc,
+                });
+
+                if (res.success) {
+                    cancelarEdicionNino();
+                    router.refresh();
+                } else {
+                    alert(res.error || 'Error al guardar');
+                }
             }
         } catch (err: any) {
-            console.error('Error al guardar niño:', err);
-            alert('Error de conexión o en el servidor al guardar el registro');
+            console.error('Error al guardar/actualizar niño:', err);
+            alert('Error de conexión o en el servidor al procesar el registro');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    // Guardar evaluación MEL
+    // Guardar o Actualizar evaluación MEL
     const handleGuardarMel = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!melForm.cedula || !melForm.nombre || !melForm.apellido || !melForm.fechaNacimiento) {
@@ -425,44 +574,36 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
         }
         setIsSubmitting(true);
         try {
-            const res = await registrarSamanEmbarazada({
-                ...melForm,
-                jornadaId: jornadaActiva.id,
-                clasificacionNutricional: clasificacionImcMelCalc,
-                clasificacionPb: clasificacionPbMelCalc,
-            });
-
-            if (res.success) {
-                setMelForm({
-                    cedula: '',
-                    nombre: '',
-                    apellido: '',
-                    fechaNacimiento: '',
-                    grupoEtnico: 'Mestizo',
-                    tipoIngreso: 'DIAGNOSTICO INICIAL',
-                    estadoEmbarazoLactancia: 'EMBARAZADA',
-                    semanaGestacion: '',
-                    edema: 'No',
-                    pesoKg: '',
-                    tallaCm: '',
-                    cBrazoCm: '',
-                    desparasitada: 'NO',
-                    tratamiento: 'Hierro+Ácido Fólico',
-                    cantidad: 30,
-                    plumpyMum: false,
-                    cantPlumpyMum: 0,
-                    micronutrientes: true,
-                    cantMicronutrientes: 30,
-                    observaciones: '',
+            if (editandoMelId) {
+                const res = await actualizarSamanEmbarazada(editandoMelId, {
+                    ...melForm,
+                    clasificacionNutricional: clasificacionImcMelCalc,
+                    clasificacionPb: clasificacionPbMelCalc,
                 });
-                setHistorialMel(null);
-                router.refresh();
+                if (res.success) {
+                    cancelarEdicionMel();
+                    router.refresh();
+                } else {
+                    alert(res.error || 'Error al actualizar el registro MEL');
+                }
             } else {
-                alert(res.error || 'Error al guardar');
+                const res = await registrarSamanEmbarazada({
+                    ...melForm,
+                    jornadaId: jornadaActiva.id,
+                    clasificacionNutricional: clasificacionImcMelCalc,
+                    clasificacionPb: clasificacionPbMelCalc,
+                });
+
+                if (res.success) {
+                    cancelarEdicionMel();
+                    router.refresh();
+                } else {
+                    alert(res.error || 'Error al guardar');
+                }
             }
         } catch (err: any) {
-            console.error('Error al guardar MEL:', err);
-            alert('Error de conexión o en el servidor al guardar el registro');
+            console.error('Error al guardar/actualizar MEL:', err);
+            alert('Error de conexión o en el servidor al procesar el registro');
         } finally {
             setIsSubmitting(false);
         }
@@ -848,6 +989,33 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                 <div className="space-y-6">
                     {/* FORMULARIO DE CAPTURA RÁPIDA EN CAMPO - NIÑOS */}
                     <form id="form-saman-ninos" onSubmit={handleGuardarNino} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
+                        {/* BANNER INDICADOR DE MODO EDICIÓN */}
+                        {editandoNinoId !== null && (
+                            <div className="bg-amber-50 border-2 border-amber-400 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-950 animate-in fade-in duration-200 shadow-xs">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center flex-none shadow-xs">
+                                        <Edit className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold">
+                                            Modo Edición Activo: Modificando evaluación de {ninoForm.nombres} {ninoForm.apellidos}
+                                        </h4>
+                                        <p className="text-xs text-amber-800">
+                                            Modifique los campos deseados y presione &quot;Guardar Cambios&quot; para actualizar el registro en la jornada.
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={cancelarEdicionNino}
+                                    className="px-3.5 py-2 bg-white text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-bold border border-slate-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                                >
+                                    <X className="w-4 h-4 text-slate-500" />
+                                    <span>Cancelar Edición</span>
+                                </button>
+                            </div>
+                        )}
+
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-slate-100 pb-4">
                             <div>
                                 <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -898,28 +1066,40 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
 
                                     <div className="flex flex-wrap items-center gap-2">
                                         {historialNinos.length > 1 && (
-                                            <select
-                                                value={ninoHistoricoSeleccionado.id}
-                                                onChange={(e) => {
-                                                    const found = historialNinos.find((h) => h.id === Number(e.target.value));
-                                                    if (found) cargarDatosNinoHistorico(found);
-                                                }}
-                                                className="bg-white border border-blue-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800"
-                                            >
-                                                {historialNinos.map((h) => (
-                                                    <option key={h.id} value={h.id}>
-                                                        Niño/a: {h.nombres} {h.apellidos}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-[11px] font-black text-amber-900 bg-amber-200/90 px-2 py-1 rounded-lg animate-pulse">
+                                                    👉 Selecciona niño/a:
+                                                </span>
+                                                <select
+                                                    value={ninoHistoricoSeleccionado.id}
+                                                    onChange={(e) => {
+                                                        const found = historialNinos.find((h) => h.id === Number(e.target.value));
+                                                        if (found) cargarDatosNinoHistorico(found);
+                                                    }}
+                                                    className="bg-amber-100 border-2 border-amber-500 rounded-xl px-3 py-1.5 text-xs font-black text-slate-900 ring-4 ring-amber-400/70 animate-pulse shadow-md"
+                                                >
+                                                    {historialNinos.map((h) => (
+                                                        <option key={h.id} value={h.id}>
+                                                            Niño/a: {h.nombres} {h.apellidos}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
                                         )}
                                         <button
                                             type="button"
                                             onClick={() => cargarDatosNinoHistorico(ninoHistoricoSeleccionado)}
-                                            className="bg-primary text-white px-3.5 py-1.5 rounded-xl text-xs font-bold hover:bg-primary/90 transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                            className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                                                historialNinos.length === 1
+                                                    ? 'bg-emerald-600 text-white hover:bg-emerald-700 ring-4 ring-emerald-400/80 animate-pulse shadow-lg shadow-emerald-600/30 scale-105'
+                                                    : 'bg-primary text-white hover:bg-primary/90 shadow-xs'
+                                            }`}
                                         >
                                             <UserCheck className="w-3.5 h-3.5" />
-                                            <span>Autocompletar datos de {ninoHistoricoSeleccionado.nombres}</span>
+                                            <span>
+                                                {historialNinos.length === 1 ? '👉 Autocompletar datos de ' : 'Autocompletar datos de '}
+                                                {ninoHistoricoSeleccionado.nombres}
+                                            </span>
                                         </button>
                                     </div>
                                 </div>
@@ -1003,220 +1183,240 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                         )}
 
                         {/* BLOQUE 1: DATOS DEL CUIDADOR Y DEL NIÑO */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 items-start">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">
-                                    Cédula Madre / Representante *
-                                </label>
-                                <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
-                                    required
-                                    placeholder="Ej: 19530148 (solo números)"
-                                    value={ninoForm.cedulaRepresentante}
-                                    onChange={(e) => setNinoForm({ ...ninoForm, cedulaRepresentante: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 bg-slate-50/50"
-                                />
+                        <div>
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-black flex items-center justify-center">1</span>
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                                    Identificación del Representante y del Niño/a (Completar en este orden)
+                                </span>
                             </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">Grupo Étnico</label>
-                                <select
-                                    value={ninoForm.grupoEtnico}
-                                    onChange={(e) => setNinoForm({ ...ninoForm, grupoEtnico: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-semibold text-slate-800"
-                                >
-                                    <option value="Mestizo">Mestizo (Mayoría)</option>
-                                    <option value="Indígena">Indígena</option>
-                                    <option value="Afrodescendiente">Afrodescendiente</option>
-                                    <option value="SD">SD (Sin Determinar)</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">Parentesco</label>
-                                <select
-                                    value={ninoForm.parentesco}
-                                    onChange={(e) => setNinoForm({ ...ninoForm, parentesco: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"
-                                >
-                                    <option value="MADRE">MADRE</option>
-                                    <option value="PADRE">PADRE</option>
-                                    <option value="ABUELA">ABUELA</option>
-                                    <option value="ABUELO">ABUELO</option>
-                                    <option value="TIA">TIA</option>
-                                    <option value="TIO">TIO</option>
-                                    <option value="HERMANA">HERMANA</option>
-                                    <option value="HERMANO">HERMANO</option>
-                                    <option value="OTRO">OTRO</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">Edad Representante</label>
-                                <select
-                                    value={ninoForm.edadRepresentante}
-                                    onChange={(e) => setNinoForm({ ...ninoForm, edadRepresentante: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"
-                                >
-                                    <option value="Menos de 17 años">Menos de 17 años</option>
-                                    <option value="Entre 18 - 49 años">Entre 18 - 49 años</option>
-                                    <option value="Entre 50 - 65 años">Entre 50 - 65 años</option>
-                                    <option value="Mas de 65 años">Más de 65 años</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">Tipo de Ingreso</label>
-                                <select
-                                    value={ninoForm.tipoIngreso}
-                                    onChange={(e) => {
-                                        const nuevoTipo = e.target.value;
-                                        let nuevoControl = ninoForm.nroControl;
-                                        let nuevoInicioVivero = ninoForm.fechaInicioVivero;
-                                        let nuevoSalidaVivero = ninoForm.fechaSalidaVivero;
-                                        let nuevoZEntrada = ninoForm.zScoreEntrada;
-                                        let nuevoZSalida = ninoForm.zScoreSalida;
-                                        let nuevoSemanas = ninoForm.semanasVivero;
-                                        let nuevaSituacion = ninoForm.situacionSalida || 'RECUPERADO';
-
-                                        if (nuevoTipo === 'SALIDA DE VIVERO') {
-                                            nuevoControl = 0;
-                                            nuevoInicioVivero = ninoHistoricoSeleccionado?.fechaInicioVivero
-                                                ? new Date(ninoHistoricoSeleccionado.fechaInicioVivero).toISOString().slice(0, 10)
-                                                : ninoForm.fechaInicioVivero;
-                                            nuevoSalidaVivero = jornadaActiva?.fecha
-                                                ? new Date(jornadaActiva.fecha).toISOString().slice(0, 10)
-                                                : new Date().toISOString().slice(0, 10);
-                                            nuevoZEntrada = ninoHistoricoSeleccionado?.zScoreEntrada !== null && ninoHistoricoSeleccionado?.zScoreEntrada !== undefined
-                                                ? String(ninoHistoricoSeleccionado.zScoreEntrada)
-                                                : ninoForm.zScoreEntrada;
-                                            nuevoZSalida = ninoForm.zScore || '';
-
-                                            if (nuevoInicioVivero && nuevoSalidaVivero) {
-                                                const diff = Math.round(
-                                                    Math.abs(new Date(nuevoSalidaVivero).getTime() - new Date(nuevoInicioVivero).getTime()) /
-                                                        (1000 * 60 * 60 * 24)
-                                                );
-                                                nuevoSemanas = String(Math.min(12, Math.max(1, Math.round(diff / 7))));
-                                            }
-                                        } else if (nuevoTipo === 'DIAGNOSTICO INICIAL') {
-                                            nuevoControl = 0;
-                                        } else if (nuevoTipo === 'REINGRESO') {
-                                            nuevoControl = ninoHistoricoSeleccionado ? (ninoHistoricoSeleccionado.totalReingresos || 0) : 0;
-                                        } else if (nuevoTipo === 'MONITOREO') {
-                                            nuevoControl = ninoHistoricoSeleccionado
-                                                ? Math.max(1, (Number(ninoHistoricoSeleccionado.nroControlPrevio) || 0) + 1)
-                                                : 1;
-                                        }
-                                        setNinoForm({
-                                            ...ninoForm,
-                                            tipoIngreso: nuevoTipo,
-                                            nroControl: nuevoControl,
-                                            fechaInicioVivero: nuevoInicioVivero,
-                                            fechaSalidaVivero: nuevoSalidaVivero,
-                                            zScoreEntrada: nuevoZEntrada,
-                                            zScoreSalida: nuevoZSalida,
-                                            semanasVivero: nuevoSemanas,
-                                            situacionSalida: nuevaSituacion,
-                                        });
-                                    }}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"
-                                >
-                                    <option value="DIAGNOSTICO INICIAL">DIAGNÓSTICO INICIAL</option>
-                                    <option value="MONITOREO">MONITOREO</option>
-                                    <option value="REINGRESO">REINGRESO</option>
-                                    <option value="SALIDA DE VIVERO">SALIDA DE VIVERO</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">N° Control / Semana</label>
-                                <select
-                                    value={ninoForm.nroControl}
-                                    onChange={(e) => setNinoForm({ ...ninoForm, nroControl: Number(e.target.value) })}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-semibold text-slate-800"
-                                >
-                                    <option value={0}>0 (Inicial / Salida / 1er Reingreso)</option>
-                                    {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
-                                        <option key={num} value={num}>
-                                            {num} ({num === 1 ? '1er Monitoreo' : `${num}° Monitoreo / Sem ${num}`})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">Nombres del Niño/a *</label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="Nombres"
-                                    value={ninoForm.nombres}
-                                    onChange={(e) => setNinoForm({ ...ninoForm, nombres: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">Apellidos del Niño/a *</label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="Apellidos"
-                                    value={ninoForm.apellidos}
-                                    onChange={(e) => setNinoForm({ ...ninoForm, apellidos: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">Sexo *</label>
-                                <div className="grid grid-cols-2 gap-1.5">
-                                    <button
-                                        type="button"
-                                        onClick={() => setNinoForm({ ...ninoForm, sexo: 'FEMENINO' })}
-                                        className={`py-2 px-2 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 cursor-pointer ${
-                                            ninoForm.sexo === 'FEMENINO'
-                                                ? 'bg-pink-500 text-white border-pink-500 shadow-xs'
-                                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 items-start">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                                        <span>Cédula Madre / Representante *</span>
+                                        {!ninoForm.cedulaRepresentante.trim() && (
+                                            <span className="text-[10px] font-black text-amber-700 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded-full animate-pulse">
+                                                👉 1. Iniciar aquí
+                                            </span>
+                                        )}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
+                                        required
+                                        placeholder="Ej: 19530148 (solo números)"
+                                        value={ninoForm.cedulaRepresentante}
+                                        onChange={(e) => setNinoForm({ ...ninoForm, cedulaRepresentante: e.target.value })}
+                                        className={`w-full px-3.5 py-2.5 rounded-xl border text-sm font-semibold focus:outline-none transition-all ${
+                                            !ninoForm.cedulaRepresentante.trim()
+                                                ? 'border-amber-400 ring-4 ring-amber-300/60 bg-amber-50/50 text-slate-900 animate-pulse'
+                                                : 'border-slate-200 bg-slate-50/50 text-slate-800 focus:ring-2 focus:ring-primary/20'
                                         }`}
-                                    >
-                                        <span>👧</span> Femenino
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setNinoForm({ ...ninoForm, sexo: 'MASCULINO' })}
-                                        className={`py-2 px-2 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 cursor-pointer ${
-                                            ninoForm.sexo === 'MASCULINO'
-                                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                                        }`}
-                                    >
-                                        <span>👦</span> Masculino
-                                    </button>
+                                    />
                                 </div>
-                            </div>
 
-                            <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">Fecha de Nacimiento *</label>
-                                <input
-                                    type="date"
-                                    required
-                                    value={ninoForm.fechaNacimiento}
-                                    onChange={(e) => setNinoForm({ ...ninoForm, fechaNacimiento: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm"
-                                />
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Grupo Étnico</label>
+                                    <select
+                                        value={ninoForm.grupoEtnico}
+                                        onChange={(e) => setNinoForm({ ...ninoForm, grupoEtnico: e.target.value })}
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-semibold text-slate-800"
+                                    >
+                                        <option value="Mestizo">Mestizo (Mayoría)</option>
+                                        <option value="Indígena">Indígena</option>
+                                        <option value="Afrodescendiente">Afrodescendiente</option>
+                                        <option value="SD">SD (Sin Determinar)</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Parentesco</label>
+                                    <select
+                                        value={ninoForm.parentesco}
+                                        onChange={(e) => setNinoForm({ ...ninoForm, parentesco: e.target.value })}
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"
+                                    >
+                                        <option value="MADRE">MADRE</option>
+                                        <option value="PADRE">PADRE</option>
+                                        <option value="ABUELA">ABUELA</option>
+                                        <option value="ABUELO">ABUELO</option>
+                                        <option value="TIA">TIA</option>
+                                        <option value="TIO">TIO</option>
+                                        <option value="HERMANA">HERMANA</option>
+                                        <option value="HERMANO">HERMANO</option>
+                                        <option value="OTRO">OTRO</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Edad Representante</label>
+                                    <select
+                                        value={ninoForm.edadRepresentante}
+                                        onChange={(e) => setNinoForm({ ...ninoForm, edadRepresentante: e.target.value })}
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"
+                                    >
+                                        <option value="Menos de 17 años">Menos de 17 años</option>
+                                        <option value="Entre 18 - 49 años">Entre 18 - 49 años</option>
+                                        <option value="Entre 50 - 65 años">Entre 50 - 65 años</option>
+                                        <option value="Mas de 65 años">Más de 65 años</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Tipo de Ingreso</label>
+                                    <select
+                                        value={ninoForm.tipoIngreso}
+                                        onChange={(e) => {
+                                            const nuevoTipo = e.target.value;
+                                            let nuevoControl = ninoForm.nroControl;
+                                            let nuevoInicioVivero = ninoForm.fechaInicioVivero;
+                                            let nuevoSalidaVivero = ninoForm.fechaSalidaVivero;
+                                            let nuevoZEntrada = ninoForm.zScoreEntrada;
+                                            let nuevoZSalida = ninoForm.zScoreSalida;
+                                            let nuevoSemanas = ninoForm.semanasVivero;
+                                            let nuevaSituacion = ninoForm.situacionSalida || 'RECUPERADO';
+
+                                            if (nuevoTipo === 'SALIDA DE VIVERO') {
+                                                nuevoControl = 0;
+                                                nuevoInicioVivero = ninoHistoricoSeleccionado?.fechaInicioVivero
+                                                    ? new Date(ninoHistoricoSeleccionado.fechaInicioVivero).toISOString().slice(0, 10)
+                                                    : ninoForm.fechaInicioVivero;
+                                                nuevoSalidaVivero = jornadaActiva?.fecha
+                                                    ? new Date(jornadaActiva.fecha).toISOString().slice(0, 10)
+                                                    : new Date().toISOString().slice(0, 10);
+                                                nuevoZEntrada = ninoHistoricoSeleccionado?.zScoreEntrada !== null && ninoHistoricoSeleccionado?.zScoreEntrada !== undefined
+                                                    ? String(ninoHistoricoSeleccionado.zScoreEntrada)
+                                                    : ninoForm.zScoreEntrada;
+                                                nuevoZSalida = ninoForm.zScore || '';
+
+                                                if (nuevoInicioVivero && nuevoSalidaVivero) {
+                                                    const diff = Math.round(
+                                                        Math.abs(new Date(nuevoSalidaVivero).getTime() - new Date(nuevoInicioVivero).getTime()) /
+                                                            (1000 * 60 * 60 * 24)
+                                                    );
+                                                    nuevoSemanas = String(Math.min(12, Math.max(1, Math.round(diff / 7))));
+                                                }
+                                            } else if (nuevoTipo === 'DIAGNOSTICO INICIAL') {
+                                                nuevoControl = 0;
+                                            } else if (nuevoTipo === 'REINGRESO') {
+                                                nuevoControl = ninoHistoricoSeleccionado ? (ninoHistoricoSeleccionado.totalReingresos || 0) : 0;
+                                            } else if (nuevoTipo === 'MONITOREO') {
+                                                nuevoControl = ninoHistoricoSeleccionado
+                                                    ? Math.max(1, (Number(ninoHistoricoSeleccionado.nroControlPrevio) || 0) + 1)
+                                                    : 1;
+                                            }
+                                            setNinoForm({
+                                                ...ninoForm,
+                                                tipoIngreso: nuevoTipo,
+                                                nroControl: nuevoControl,
+                                                fechaInicioVivero: nuevoInicioVivero,
+                                                fechaSalidaVivero: nuevoSalidaVivero,
+                                                zScoreEntrada: nuevoZEntrada,
+                                                zScoreSalida: nuevoZSalida,
+                                                semanasVivero: nuevoSemanas,
+                                                situacionSalida: nuevaSituacion,
+                                            });
+                                        }}
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"
+                                    >
+                                        <option value="DIAGNOSTICO INICIAL">DIAGNÓSTICO INICIAL</option>
+                                        <option value="MONITOREO">MONITOREO</option>
+                                        <option value="REINGRESO">REINGRESO</option>
+                                        <option value="SALIDA DE VIVERO">SALIDA DE VIVERO</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">N° Control / Semana</label>
+                                    <select
+                                        value={ninoForm.nroControl}
+                                        onChange={(e) => setNinoForm({ ...ninoForm, nroControl: Number(e.target.value) })}
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-semibold text-slate-800"
+                                    >
+                                        <option value={0}>0 (Inicial / Salida / 1er Reingreso)</option>
+                                        {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
+                                            <option key={num} value={num}>
+                                                {num} ({num === 1 ? '1er Monitoreo' : `${num}° Monitoreo / Sem ${num}`})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Nombres del Niño/a *</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="Nombres"
+                                        value={ninoForm.nombres}
+                                        onChange={(e) => setNinoForm({ ...ninoForm, nombres: e.target.value })}
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Apellidos del Niño/a *</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="Apellidos"
+                                        value={ninoForm.apellidos}
+                                        onChange={(e) => setNinoForm({ ...ninoForm, apellidos: e.target.value })}
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Sexo *</label>
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => setNinoForm({ ...ninoForm, sexo: 'FEMENINO' })}
+                                            className={`py-2 px-2 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 cursor-pointer ${
+                                                ninoForm.sexo === 'FEMENINO'
+                                                    ? 'bg-pink-500 text-white border-pink-500 shadow-xs'
+                                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            <span>👧</span> Femenino
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setNinoForm({ ...ninoForm, sexo: 'MASCULINO' })}
+                                            className={`py-2 px-2 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 cursor-pointer ${
+                                                ninoForm.sexo === 'MASCULINO'
+                                                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            <span>👦</span> Masculino
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">Fecha de Nacimiento *</label>
+                                    <input
+                                        type="date"
+                                        required
+                                        value={ninoForm.fechaNacimiento}
+                                        onChange={(e) => setNinoForm({ ...ninoForm, fechaNacimiento: e.target.value })}
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm"
+                                    />
+                                </div>
                             </div>
                         </div>
 
-                        {/* BLOQUE 2: MEDIDAS ANTROPOMÉTRICAS Y CÁLCULO EN TIEMPO REAL */}
+                        {/* BLOQUE 2: MEDIDAS ANTROPOMÉTRICAS Y CÁLCULO EN TIEMPO REAL (REORDENADO: 1° CBI, 2° TALLA, 3° PESO) */}
                         <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/70 space-y-4">
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                                <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                                    📏 Tamizaje Antropométrico y Diagnóstico Automático
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-black flex items-center justify-center">2</span>
+                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                                        Tamizaje Antropométrico: 1° C. Brazo / CBI → 2° Talla → 3° Peso
+                                    </span>
+                                </div>
                                 <div className="flex flex-wrap items-center gap-2">
                                     <span className="text-xs font-semibold text-slate-600">
                                         Clasificación CBI/PB:{' '}
@@ -1230,22 +1430,28 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                             </div>
 
                             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
+                                {/* 1. C. Brazo / CBI (cm) - PRIMERO */}
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">Peso (kg) *</label>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                                        1° C. Brazo / CBI (cm) *
+                                    </label>
                                     <input
                                         type="number"
-                                        step="0.01"
+                                        step="0.1"
                                         inputMode="decimal"
                                         required
-                                        placeholder="Ej: 11.5"
-                                        value={ninoForm.pesoKg}
-                                        onChange={(e) => setNinoForm({ ...ninoForm, pesoKg: e.target.value, zScoreManual: false })}
+                                        placeholder="Ej: 15.0"
+                                        value={ninoForm.cBrazoCm}
+                                        onChange={(e) => setNinoForm({ ...ninoForm, cBrazoCm: e.target.value })}
                                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-900"
                                     />
                                 </div>
 
+                                {/* 2. Talla (cm) - SEGUNDO */}
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">Talla (cm) *</label>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                                        2° Talla (cm) *
+                                    </label>
                                     <input
                                         type="number"
                                         step="0.1"
@@ -1258,6 +1464,24 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                     />
                                 </div>
 
+                                {/* 3. Peso (kg) - TERCERO */}
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                                        3° Peso (kg) *
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        inputMode="decimal"
+                                        required
+                                        placeholder="Ej: 11.5"
+                                        value={ninoForm.pesoKg}
+                                        onChange={(e) => setNinoForm({ ...ninoForm, pesoKg: e.target.value, zScoreManual: false })}
+                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-900"
+                                    />
+                                </div>
+
+                                {/* 4. Posición Medida */}
                                 <div>
                                     <label className="block text-xs font-bold text-slate-700 mb-1">Posición Medida</label>
                                     <select
@@ -1272,6 +1496,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                     </select>
                                 </div>
 
+                                {/* 5. C. Cefálica (cm) */}
                                 <div>
                                     <label className="block text-xs font-bold text-slate-700 mb-1">C. Cefálica (cm)</label>
                                     <input
@@ -1286,20 +1511,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                     />
                                 </div>
 
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1">C. Brazo / CBI (cm) *</label>
-                                    <input
-                                        type="number"
-                                        step="0.1"
-                                        inputMode="decimal"
-                                        required
-                                        placeholder="Ej: 15.0"
-                                        value={ninoForm.cBrazoCm}
-                                        onChange={(e) => setNinoForm({ ...ninoForm, cBrazoCm: e.target.value })}
-                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-900"
-                                    />
-                                </div>
-
+                                {/* 6. Z-Score (ZPT) */}
                                 <div>
                                     <label className="block text-xs font-bold text-slate-700 mb-1">Z-Score (ZPT) *</label>
                                     <input
@@ -1315,6 +1527,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                     />
                                 </div>
 
+                                {/* 7. Edema */}
                                 <div>
                                     <label className="block text-xs font-bold text-slate-700 mb-1">Edema</label>
                                     <div className="grid grid-cols-2 gap-1">
@@ -1339,6 +1552,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                     </div>
                                 </div>
 
+                                {/* 8. Desparasitado */}
                                 <div>
                                     <label className="block text-xs font-bold text-slate-700 mb-1">Desparasitado</label>
                                     <div className="grid grid-cols-2 gap-1">
@@ -1583,13 +1797,30 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                             </div>
                         </div>
 
-                        <div className="flex justify-end pt-2">
+                        <div className="flex items-center justify-end gap-2 pt-2">
+                            {editandoNinoId && (
+                                <button
+                                    type="button"
+                                    onClick={cancelarEdicionNino}
+                                    className="px-5 py-3 rounded-2xl text-sm font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all cursor-pointer"
+                                >
+                                    Cancelar
+                                </button>
+                            )}
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="bg-primary text-white px-6 py-3 rounded-2xl text-sm font-bold shadow-md shadow-primary/20 hover:bg-primary/90 transition-all cursor-pointer disabled:opacity-50"
+                                className={`px-6 py-3 rounded-2xl text-sm font-bold shadow-md transition-all cursor-pointer disabled:opacity-50 ${
+                                    editandoNinoId
+                                        ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/20'
+                                        : 'bg-primary text-white shadow-primary/20 hover:bg-primary/90'
+                                }`}
                             >
-                                {isSubmitting ? 'Guardando...' : '+ Registrar Evaluación de Niño/a en la Jornada'}
+                                {isSubmitting
+                                    ? 'Procesando...'
+                                    : editandoNinoId
+                                    ? '💾 Guardar Cambios de la Evaluación'
+                                    : '+ Registrar Evaluación de Niño/a en la Jornada'}
                             </button>
                         </div>
                     </form>
@@ -1625,7 +1856,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {ninosFiltrados.map((n: any, idx: number) => (
-                                        <tr key={n.id} className="hover:bg-slate-50/80 transition-colors">
+                                        <tr key={n.id} className={`hover:bg-slate-50/80 transition-colors ${editandoNinoId === n.id ? 'bg-amber-50/50' : ''}`}>
                                             <td className="py-3 px-4 font-bold text-slate-400">{idx + 1}</td>
                                             <td className="py-3 px-4">
                                                 <div className="font-bold text-slate-800">{n.cedulaRepresentante}</div>
@@ -1668,19 +1899,29 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                                 )}
                                             </td>
                                             <td className="py-3 px-4 text-right">
-                                                <button
-                                                    type="button"
-                                                    onClick={async () => {
-                                                        if (confirm(`¿Eliminar el registro de ${n.nombres} ${n.apellidos}?`)) {
-                                                            await eliminarRegistroSamanNino(n.id);
-                                                            router.refresh();
-                                                        }
-                                                    }}
-                                                    className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
-                                                    title="Eliminar registro"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => iniciarEdicionNino(n)}
+                                                        className="p-1.5 text-slate-500 hover:text-amber-600 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer"
+                                                        title="Editar evaluación"
+                                                    >
+                                                        <Edit className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={async () => {
+                                                            if (confirm(`¿Eliminar el registro de ${n.nombres} ${n.apellidos}?`)) {
+                                                                await eliminarRegistroSamanNino(n.id);
+                                                                router.refresh();
+                                                            }
+                                                        }}
+                                                        className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                                                        title="Eliminar registro"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -1696,7 +1937,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                 </div>
                             ) : (
                                 ninosFiltrados.map((n: any, idx: number) => (
-                                    <div key={n.id} className="p-4 space-y-2.5 hover:bg-slate-50/60 transition-colors">
+                                    <div key={n.id} className={`p-4 space-y-2.5 hover:bg-slate-50/60 transition-colors ${editandoNinoId === n.id ? 'bg-amber-50/50' : ''}`}>
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="flex items-center gap-2">
                                                 <span className="w-6 h-6 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold flex items-center justify-center flex-none">
@@ -1718,16 +1959,16 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
 
                                         <div className="grid grid-cols-4 gap-1.5 bg-slate-50 p-2.5 rounded-xl text-center">
                                             <div>
-                                                <span className="text-[9px] uppercase font-bold text-slate-400 block">Peso</span>
-                                                <span className="text-xs font-bold text-slate-800">{n.pesoKg} kg</span>
+                                                <span className="text-[9px] uppercase font-bold text-slate-400 block">CBI (1°)</span>
+                                                <span className="text-xs font-bold text-primary">{n.cBrazoCm} cm</span>
                                             </div>
                                             <div>
-                                                <span className="text-[9px] uppercase font-bold text-slate-400 block">Talla</span>
+                                                <span className="text-[9px] uppercase font-bold text-slate-400 block">Talla (2°)</span>
                                                 <span className="text-xs font-bold text-slate-800">{n.tallaCm} cm</span>
                                             </div>
                                             <div>
-                                                <span className="text-[9px] uppercase font-bold text-slate-400 block">CBI</span>
-                                                <span className="text-xs font-bold text-primary">{n.cBrazoCm} cm</span>
+                                                <span className="text-[9px] uppercase font-bold text-slate-400 block">Peso (3°)</span>
+                                                <span className="text-xs font-bold text-slate-800">{n.pesoKg} kg</span>
                                             </div>
                                             <div>
                                                 <span className="text-[9px] uppercase font-bold text-slate-400 block">Z-Score</span>
@@ -1741,19 +1982,29 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                                 <span className="font-semibold text-primary"> • {n.tipoIngreso}</span> (Ctrl: {n.nroControl ?? 0})
                                                 {n.tratamientoProtocolo && ` • ${n.tratamientoProtocolo}`}
                                             </div>
-                                            <button
-                                                type="button"
-                                                onClick={async () => {
-                                                    if (confirm(`¿Eliminar el registro de ${n.nombres} ${n.apellidos}?`)) {
-                                                        await eliminarRegistroSamanNino(n.id);
-                                                        router.refresh();
-                                                    }
-                                                }}
-                                                className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg transition-colors flex-none"
-                                                title="Eliminar"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                            <div className="flex items-center gap-1 flex-none">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => iniciarEdicionNino(n)}
+                                                    className="p-1.5 text-slate-500 hover:text-amber-600 rounded-lg transition-colors"
+                                                    title="Editar evaluación"
+                                                >
+                                                    <Edit className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={async () => {
+                                                        if (confirm(`¿Eliminar el registro de ${n.nombres} ${n.apellidos}?`)) {
+                                                            await eliminarRegistroSamanNino(n.id);
+                                                            router.refresh();
+                                                        }
+                                                    }}
+                                                    className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg transition-colors"
+                                                    title="Eliminar"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 ))
@@ -1769,6 +2020,33 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
             {activeTab === 'mel' && (
                 <div className="space-y-6">
                     <form id="form-saman-mel" onSubmit={handleGuardarMel} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
+                        {/* BANNER INDICADOR DE MODO EDICIÓN MEL */}
+                        {editandoMelId !== null && (
+                            <div className="bg-pink-50 border-2 border-pink-400 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-pink-950 animate-in fade-in duration-200 shadow-xs">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-xl bg-pink-600 text-white flex items-center justify-center flex-none shadow-xs">
+                                        <Edit className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold">
+                                            Modo Edición Activo: Modificando evaluación MEL de {melForm.nombre} {melForm.apellido}
+                                        </h4>
+                                        <p className="text-xs text-pink-850">
+                                            Modifique los campos necesarios y presione &quot;Guardar Cambios&quot; para actualizar el registro en la jornada.
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={cancelarEdicionMel}
+                                    className="px-3.5 py-2 bg-white text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-bold border border-slate-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                                >
+                                    <X className="w-4 h-4 text-slate-500" />
+                                    <span>Cancelar Edición</span>
+                                </button>
+                            </div>
+                        )}
+
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-slate-100 pb-4">
                             <div>
                                 <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -1813,10 +2091,10 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                     <button
                                         type="button"
                                         onClick={() => cargarDatosMelHistorico(historialMel)}
-                                        className="bg-pink-600 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold hover:bg-pink-700 transition-all flex items-center gap-1.5 cursor-pointer"
+                                        className="bg-pink-600 text-white px-4 py-2 rounded-xl text-xs font-black hover:bg-pink-700 transition-all flex items-center gap-1.5 cursor-pointer ring-4 ring-pink-400/70 animate-pulse shadow-md"
                                     >
                                         <UserCheck className="w-3.5 h-3.5" />
-                                        <span>Autocompletar datos de {historialMel.nombre}</span>
+                                        <span>👉 Autocompletar datos de {historialMel.nombre}</span>
                                     </button>
                                 </div>
 
@@ -1851,7 +2129,14 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
 
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">Cédula de Identidad *</label>
+                                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                                    <span>Cédula de Identidad *</span>
+                                    {!melForm.cedula.trim() && (
+                                        <span className="text-[10px] font-black text-pink-700 bg-pink-100 border border-pink-300 px-1.5 py-0.5 rounded-full animate-pulse">
+                                            👉 1. Iniciar aquí
+                                        </span>
+                                    )}
+                                </label>
                                 <input
                                     type="text"
                                     inputMode="numeric"
@@ -1860,7 +2145,11 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                     placeholder="Ej: 28479221 (solo números)"
                                     value={melForm.cedula}
                                     onChange={(e) => setMelForm({ ...melForm, cedula: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold bg-slate-50/50"
+                                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm font-semibold transition-all ${
+                                        !melForm.cedula.trim()
+                                            ? 'border-pink-400 ring-4 ring-pink-300/60 bg-pink-50/40 text-slate-900 animate-pulse'
+                                            : 'border-slate-200 bg-slate-50/50 text-slate-800'
+                                    }`}
                                 />
                             </div>
                             <div>
@@ -2060,10 +2349,10 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                             cantMicronutrientes: !val.toLowerCase().includes('plumpy') ? melForm.cantidad : 0,
                                         });
                                     }}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-semibold text-slate-800"
                                 >
                                     <option value="Hierro+Ácido Fólico">Hierro+Ácido Fólico</option>
-                                    <option value="Plumpy Mom">Plumpy Mom (Suplemento MEL)</option>
+                                    <option value="Plumpy Mum">Plumpy Mum (Suplemento MEL)</option>
                                     <option value="Tabletas Prenatales (Micronutrientes)">Tabletas Prenatales (Micronutrientes)</option>
                                     <option value="Sin Tratamiento">Sin Tratamiento</option>
                                 </select>
@@ -2091,13 +2380,30 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                             </div>
                         </div>
 
-                        <div className="flex justify-end pt-2">
+                        <div className="flex items-center justify-end gap-2 pt-2">
+                            {editandoMelId && (
+                                <button
+                                    type="button"
+                                    onClick={cancelarEdicionMel}
+                                    className="px-5 py-3 rounded-2xl text-sm font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all cursor-pointer"
+                                >
+                                    Cancelar
+                                </button>
+                            )}
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="bg-primary text-white px-6 py-3 rounded-2xl text-sm font-bold shadow-md shadow-primary/20 hover:bg-primary/90 transition-all cursor-pointer disabled:opacity-50"
+                                className={`px-6 py-3 rounded-2xl text-sm font-bold shadow-md transition-all cursor-pointer disabled:opacity-50 ${
+                                    editandoMelId
+                                        ? 'bg-pink-600 hover:bg-pink-700 text-white shadow-pink-600/20'
+                                        : 'bg-primary text-white shadow-primary/20 hover:bg-primary/90'
+                                }`}
                             >
-                                {isSubmitting ? 'Guardando...' : '+ Registrar Evaluación MEL en la Jornada'}
+                                {isSubmitting
+                                    ? 'Procesando...'
+                                    : editandoMelId
+                                    ? '💾 Guardar Cambios Evaluación MEL'
+                                    : '+ Registrar Evaluación MEL en la Jornada'}
                             </button>
                         </div>
                     </form>
@@ -2133,7 +2439,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {melFiltradas.map((m: any, idx: number) => (
-                                        <tr key={m.id} className="hover:bg-slate-50/80 transition-colors">
+                                        <tr key={m.id} className={`hover:bg-slate-50/80 transition-colors ${editandoMelId === m.id ? 'bg-pink-50/50' : ''}`}>
                                             <td className="py-3 px-4 font-bold text-slate-400">{idx + 1}</td>
                                             <td className="py-3 px-4 font-bold text-slate-800">{m.cedula}</td>
                                             <td className="py-3 px-4">
@@ -2171,18 +2477,29 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                                 )}
                                             </td>
                                             <td className="py-3 px-4 text-right">
-                                                <button
-                                                    type="button"
-                                                    onClick={async () => {
-                                                        if (confirm(`¿Eliminar el registro de ${m.nombre} ${m.apellido}?`)) {
-                                                            await eliminarRegistroSamanEmbarazada(m.id);
-                                                            router.refresh();
-                                                        }
-                                                    }}
-                                                    className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => iniciarEdicionMel(m)}
+                                                        className="p-1.5 text-slate-500 hover:text-pink-600 rounded-lg hover:bg-pink-50 transition-colors cursor-pointer"
+                                                        title="Editar evaluación MEL"
+                                                    >
+                                                        <Edit className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={async () => {
+                                                            if (confirm(`¿Eliminar el registro de ${m.nombre} ${m.apellido}?`)) {
+                                                                await eliminarRegistroSamanEmbarazada(m.id);
+                                                                router.refresh();
+                                                            }
+                                                        }}
+                                                        className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                                                        title="Eliminar"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -2198,7 +2515,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                 </div>
                             ) : (
                                 melFiltradas.map((m: any, idx: number) => (
-                                    <div key={m.id} className="p-4 space-y-2.5 hover:bg-slate-50/60 transition-colors">
+                                    <div key={m.id} className={`p-4 space-y-2.5 hover:bg-slate-50/60 transition-colors ${editandoMelId === m.id ? 'bg-pink-50/50' : ''}`}>
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="flex items-center gap-2">
                                                 <span className="w-6 h-6 rounded-lg bg-pink-100 text-pink-700 text-xs font-bold flex items-center justify-center flex-none">
@@ -2242,19 +2559,29 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                             <div className="truncate pr-2">
                                                 <span className="font-semibold text-slate-700">Tratamiento:</span> {m.tratamiento} ({m.cantidad})
                                             </div>
-                                            <button
-                                                type="button"
-                                                onClick={async () => {
-                                                    if (confirm(`¿Eliminar el registro de ${m.nombre} ${m.apellido}?`)) {
-                                                        await eliminarRegistroSamanEmbarazada(m.id);
-                                                        router.refresh();
-                                                    }
-                                                }}
-                                                className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg transition-colors flex-none"
-                                                title="Eliminar"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                            <div className="flex items-center gap-1 flex-none">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => iniciarEdicionMel(m)}
+                                                    className="p-1.5 text-slate-500 hover:text-pink-600 rounded-lg transition-colors"
+                                                    title="Editar evaluación MEL"
+                                                >
+                                                    <Edit className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={async () => {
+                                                        if (confirm(`¿Eliminar el registro de ${m.nombre} ${m.apellido}?`)) {
+                                                            await eliminarRegistroSamanEmbarazada(m.id);
+                                                            router.refresh();
+                                                        }
+                                                    }}
+                                                    className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg transition-colors flex-none"
+                                                    title="Eliminar"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 ))
