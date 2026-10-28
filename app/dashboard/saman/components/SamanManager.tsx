@@ -124,6 +124,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
         cantPlumpyRojo: 0,
         plumpyMum: false,
         cantPlumpyMum: 0,
+        otrosComplementos: 'Ninguno',
         fechaInicioVivero: '',
         fechaSalidaVivero: '',
         zScoreEntrada: '',
@@ -376,6 +377,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
             cantPlumpyRojo: n.cantPlumpyRojo || 0,
             plumpyMum: Boolean(n.plumpyMum),
             cantPlumpyMum: n.cantPlumpyMum || 0,
+            otrosComplementos: n.otrosComplementos || 'Ninguno',
             fechaInicioVivero: iniVivStr,
             fechaSalidaVivero: salVivStr,
             zScoreEntrada: n.zScoreEntrada !== null && n.zScoreEntrada !== undefined ? String(n.zScoreEntrada) : '',
@@ -427,6 +429,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
             cantPlumpyRojo: 0,
             plumpyMum: false,
             cantPlumpyMum: 0,
+            otrosComplementos: 'Ninguno',
             fechaInicioVivero: '',
             fechaSalidaVivero: '',
             zScoreEntrada: '',
@@ -1711,89 +1714,127 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                         )}
 
                         {/* BLOQUE 3: TRATAMIENTOS ENTREGADOS SEGÚN PROTOCOLO CÁRITAS */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                            {/* Micronutrientes */}
-                            <div className={`p-3.5 rounded-2xl border transition-all ${ninoForm.micronutrientes ? 'bg-teal-50/70 border-teal-300' : 'bg-white border-slate-200'}`}>
-                                <div className="flex items-center justify-between">
-                                    <label className="flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={ninoForm.micronutrientes}
-                                            onChange={(e) => setNinoForm({ ...ninoForm, micronutrientes: e.target.checked, cantMicronutrientes: e.target.checked ? 30 : 0 })}
-                                            className="rounded text-teal-600"
-                                        />
-                                        <span>💊 Micronutrientes</span>
-                                    </label>
-                                    {ninoForm.micronutrientes && (
-                                        <input
-                                            type="number"
-                                            value={ninoForm.cantMicronutrientes}
-                                            onChange={(e) => setNinoForm({ ...ninoForm, cantMicronutrientes: Number(e.target.value) })}
-                                            className="w-16 px-2 py-1 text-xs font-bold border border-teal-300 rounded-lg bg-white text-center"
-                                        />
-                                    )}
-                                </div>
-                                <p className="text-[10px] text-slate-500 mt-1">Adecuados / RN &gt; 2 años (30 sobres)</p>
+                        <div>
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-black flex items-center justify-center">3</span>
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                                    Protocolo Cáritas, Tratamiento Suministrado y Otros Complementos
+                                </span>
                             </div>
-
-                            {/* Plumpy Amarillo */}
-                            <div className={`p-3.5 rounded-2xl border transition-all ${ninoForm.plumpyAmarillo ? 'bg-yellow-50/80 border-yellow-300' : 'bg-white border-slate-200'}`}>
-                                <div className="flex items-center justify-between">
-                                    <label className="flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={ninoForm.plumpyAmarillo}
-                                            onChange={(e) => setNinoForm({ ...ninoForm, plumpyAmarillo: e.target.checked, cantPlumpyAmarillo: e.target.checked ? 30 : 0 })}
-                                            className="rounded text-yellow-600"
-                                        />
-                                        <span>🟨 Plumpy Amarillo (DOZ)</span>
-                                    </label>
-                                    {ninoForm.plumpyAmarillo && (
-                                        <input
-                                            type="number"
-                                            value={ninoForm.cantPlumpyAmarillo}
-                                            onChange={(e) => setNinoForm({ ...ninoForm, cantPlumpyAmarillo: Number(e.target.value) })}
-                                            className="w-16 px-2 py-1 text-xs font-bold border border-yellow-300 rounded-lg bg-white text-center"
-                                        />
-                                    )}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                                {/* Micronutrientes */}
+                                <div className={`p-3.5 rounded-2xl border transition-all ${ninoForm.micronutrientes ? 'bg-teal-50/70 border-teal-300' : 'bg-white border-slate-200'}`}>
+                                    <div className="flex items-center justify-between">
+                                        <label className="flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={ninoForm.micronutrientes}
+                                                onChange={(e) => setNinoForm({ ...ninoForm, micronutrientes: e.target.checked, cantMicronutrientes: e.target.checked ? 30 : 0 })}
+                                                className="rounded text-teal-600"
+                                            />
+                                            <span>💊 Micronutrientes</span>
+                                        </label>
+                                        {ninoForm.micronutrientes && (
+                                            <input
+                                                type="number"
+                                                value={ninoForm.cantMicronutrientes}
+                                                onChange={(e) => setNinoForm({ ...ninoForm, cantMicronutrientes: Number(e.target.value) })}
+                                                className="w-16 px-2 py-1 text-xs font-bold border border-teal-300 rounded-lg bg-white text-center"
+                                            />
+                                        )}
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 mt-1">Adecuados / RN &gt; 2 años (30 sobres)</p>
                                 </div>
-                                <p className="text-[10px] text-slate-500 mt-1">Riesgo Nutricional &lt; 2 años (30 sobres)</p>
-                            </div>
 
-                            {/* Plumpy Rojo */}
-                            <div className={`p-3.5 rounded-2xl border transition-all ${ninoForm.plumpyRojo ? 'bg-rose-50/80 border-rose-300' : 'bg-white border-slate-200'}`}>
-                                <div className="flex items-center justify-between">
-                                    <label className="flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={ninoForm.plumpyRojo}
-                                            onChange={(e) => setNinoForm({ ...ninoForm, plumpyRojo: e.target.checked, cantPlumpyRojo: e.target.checked ? 30 : 0 })}
-                                            className="rounded text-rose-600"
-                                        />
-                                        <span>🟥 Plumpy Rojo (NUT)</span>
-                                    </label>
-                                    {ninoForm.plumpyRojo && (
-                                        <input
-                                            type="number"
-                                            value={ninoForm.cantPlumpyRojo}
-                                            onChange={(e) => setNinoForm({ ...ninoForm, cantPlumpyRojo: Number(e.target.value) })}
-                                            className="w-16 px-2 py-1 text-xs font-bold border border-rose-300 rounded-lg bg-white text-center"
-                                        />
-                                    )}
+                                {/* Plumpy Amarillo */}
+                                <div className={`p-3.5 rounded-2xl border transition-all ${ninoForm.plumpyAmarillo ? 'bg-yellow-50/80 border-yellow-300' : 'bg-white border-slate-200'}`}>
+                                    <div className="flex items-center justify-between">
+                                        <label className="flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={ninoForm.plumpyAmarillo}
+                                                onChange={(e) => setNinoForm({ ...ninoForm, plumpyAmarillo: e.target.checked, cantPlumpyAmarillo: e.target.checked ? 30 : 0 })}
+                                                className="rounded text-yellow-600"
+                                            />
+                                            <span>🟨 Plumpy Amarillo (DOZ)</span>
+                                        </label>
+                                        {ninoForm.plumpyAmarillo && (
+                                            <input
+                                                type="number"
+                                                value={ninoForm.cantPlumpyAmarillo}
+                                                onChange={(e) => setNinoForm({ ...ninoForm, cantPlumpyAmarillo: Number(e.target.value) })}
+                                                className="w-16 px-2 py-1 text-xs font-bold border border-yellow-300 rounded-lg bg-white text-center"
+                                            />
+                                        )}
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 mt-1">Riesgo Nutricional &lt; 2 años (30 sobres)</p>
                                 </div>
-                                <p className="text-[10px] text-slate-500 mt-1">DAM (1 diario / 30) • DAS (2 diarios / 60)</p>
-                            </div>
 
-                            {/* Observaciones */}
-                            <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">Observaciones</label>
-                                <input
-                                    type="text"
-                                    placeholder="Ej: SE MIDIÓ RECOSTADO / NO ENTRA EN SAMAN"
-                                    value={ninoForm.observaciones}
-                                    onChange={(e) => setNinoForm({ ...ninoForm, observaciones: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs"
-                                />
+                                {/* Plumpy Rojo */}
+                                <div className={`p-3.5 rounded-2xl border transition-all ${ninoForm.plumpyRojo ? 'bg-rose-50/80 border-rose-300' : 'bg-white border-slate-200'}`}>
+                                    <div className="flex items-center justify-between">
+                                        <label className="flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={ninoForm.plumpyRojo}
+                                                onChange={(e) => setNinoForm({ ...ninoForm, plumpyRojo: e.target.checked, cantPlumpyRojo: e.target.checked ? 30 : 0 })}
+                                                className="rounded text-rose-600"
+                                            />
+                                            <span>🟥 Plumpy Rojo (NUT)</span>
+                                        </label>
+                                        {ninoForm.plumpyRojo && (
+                                            <input
+                                                type="number"
+                                                value={ninoForm.cantPlumpyRojo}
+                                                onChange={(e) => setNinoForm({ ...ninoForm, cantPlumpyRojo: Number(e.target.value) })}
+                                                className="w-16 px-2 py-1 text-xs font-bold border border-rose-300 rounded-lg bg-white text-center"
+                                            />
+                                        )}
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 mt-1">DAM (1 diario / 30) • DAS (2 diarios / 60)</p>
+                                </div>
+
+                                {/* Otros Complementos (Columna AI del Formato Oficial) */}
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                                        Otros Complementos
+                                    </label>
+                                    <select
+                                        value={ninoForm.otrosComplementos}
+                                        onChange={(e) => setNinoForm({ ...ninoForm, otrosComplementos: e.target.value })}
+                                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-white"
+                                    >
+                                        <option value="Ninguno">Ninguno</option>
+                                        <option value="Sales de rehidratación oral">Sales de rehidratación oral</option>
+                                        <option value="Amoxicilina">Amoxicilina</option>
+                                        <option value="Ambos insumos">Ambos insumos</option>
+                                        <option value="Lactovisoy">Lactovisoy</option>
+                                        <option value="Otro...incluir en las observaciones.">Otro...incluir en las observaciones.</option>
+                                    </select>
+                                </div>
+
+                                {/* Observaciones */}
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                                        <span>Observaciones</span>
+                                        {ninoForm.otrosComplementos.startsWith('Otro') && !ninoForm.observaciones.trim() && (
+                                            <span className="text-[9px] font-black text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full animate-pulse">
+                                                👉 Indique complemento
+                                            </span>
+                                        )}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Ej: SE MIDIÓ RECOSTADO / NO ENTRA EN SAMAN"
+                                        value={ninoForm.observaciones}
+                                        onChange={(e) => setNinoForm({ ...ninoForm, observaciones: e.target.value })}
+                                        className={`w-full px-3.5 py-2.5 rounded-xl border text-xs transition-all ${
+                                            ninoForm.otrosComplementos.startsWith('Otro') && !ninoForm.observaciones.trim()
+                                                ? 'border-amber-400 ring-2 ring-amber-300/60 bg-amber-50/40'
+                                                : 'border-slate-200'
+                                        }`}
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -1893,6 +1934,11 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                                     <span className="text-[10px] text-emerald-600 font-bold">
                                                         {n.cantidadSuministrada} sobres • Desp: {n.desparasitado}
                                                     </span>
+                                                )}
+                                                {n.otrosComplementos && n.otrosComplementos !== 'Ninguno' && (
+                                                    <div className="text-[10px] text-indigo-600 font-semibold">
+                                                        + Compl: {n.otrosComplementos}
+                                                    </div>
                                                 )}
                                                 {n.observaciones && (
                                                     <div className="text-[10px] text-amber-600 italic">{n.observaciones}</div>

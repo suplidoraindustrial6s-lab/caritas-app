@@ -81,7 +81,7 @@ export function buildNinoRowXml(nino: any, idx: number, jornada: any): string {
     c.push(cellVal('AF', r, nino.desparasitado || 'NO', 479));
     c.push(cellVal('AG', r, nino.tratamientoProtocolo || 'Sin Tratamiento', 690));
     c.push(cellVal('AH', r, nino.cantidadSuministrada > 0 ? nino.cantidadSuministrada : '', 481));
-    c.push(cellVal('AI', r, nino.otrosComplementos || '', 689));
+    c.push(cellVal('AI', r, nino.otrosComplementos || 'Ninguno', 689));
 
     // Columnas AJ a AO (Exclusivas Salida de Vivero)
     if (nino.tipoIngreso === 'SALIDA DE VIVERO') {
