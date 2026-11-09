@@ -26,7 +26,9 @@ import {
     ChevronUp,
     Edit,
     X,
+    Send,
 } from 'lucide-react';
+import SamanTelegramModal from './SamanTelegramModal';
 import {
     crearJornadaSaman,
     buscarHistorialNinoPorCedula,
@@ -74,6 +76,8 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'ninos' | 'mel'>('ninos');
     const [showNewJornadaModal, setShowNewJornadaModal] = useState(false);
+    const [showTelegramModal, setShowTelegramModal] = useState(false);
+    const [telegramPacienteSel, setTelegramPacienteSel] = useState<{ cedula: string; nombre: string } | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [mostrarIndicadoresMovil, setMostrarIndicadoresMovil] = useState(false);
@@ -839,6 +843,19 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                     >
                         <Plus className="w-4 h-4" />
                         <span>Nueva Jornada</span>
+                    </button>
+
+                    {/* Botón Notificar por Telegram (Grupos, Monitoreo e Individual) */}
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setTelegramPacienteSel(null);
+                            setShowTelegramModal(true);
+                        }}
+                        className="bg-sky-600 text-white px-4 py-2.5 rounded-2xl text-sm font-semibold shadow-md shadow-sky-600/20 hover:bg-sky-700 transition-all flex items-center gap-2 cursor-pointer"
+                    >
+                        <Send className="w-4 h-4" />
+                        <span>Notificar Telegram</span>
                     </button>
 
                     {/* Botón Exportar al Excel Oficial de Cáritas */}
@@ -1948,6 +1965,20 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                                 <div className="flex items-center justify-end gap-1">
                                                     <button
                                                         type="button"
+                                                        onClick={() => {
+                                                            setTelegramPacienteSel({
+                                                                cedula: n.cedulaRepresentante,
+                                                                nombre: `${n.nombres} ${n.apellidos}`,
+                                                            });
+                                                            setShowTelegramModal(true);
+                                                        }}
+                                                        className="p-1.5 text-slate-400 hover:text-sky-600 rounded-lg hover:bg-sky-50 transition-colors cursor-pointer"
+                                                        title="Notificar individualmente por Telegram"
+                                                    >
+                                                        <Send className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
                                                         onClick={() => iniciarEdicionNino(n)}
                                                         className="p-1.5 text-slate-500 hover:text-amber-600 rounded-lg hover:bg-amber-50 transition-colors cursor-pointer"
                                                         title="Editar evaluación"
@@ -2772,6 +2803,17 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                     </div>
                 </div>
             )}
+
+            {/* MODAL DE NOTIFICACIONES TELEGRAM SAMÁN */}
+            <SamanTelegramModal
+                isOpen={showTelegramModal}
+                onClose={() => {
+                    setShowTelegramModal(false);
+                    setTelegramPacienteSel(null);
+                }}
+                comunidadDefault={`Sede Cáritas Parroquial ${jornadaActiva?.parroquiaEclesial || 'La Milagrosa'} - ${jornadaActiva?.comunidad || 'El Limón'}`}
+                pacientePreseleccionado={telegramPacienteSel}
+            />
         </div>
     );
 }
