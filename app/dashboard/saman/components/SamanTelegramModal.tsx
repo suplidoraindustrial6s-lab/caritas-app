@@ -54,6 +54,7 @@ export default function SamanTelegramModal({
     const [contactos, setContactos] = useState<ContactoTelegramSaman[]>([]);
     const [pacientesSaman, setPacientesSaman] = useState<any[]>([]);
     const [qrModalGrupo, setQrModalGrupo] = useState<{ nombre: string; link: string } | null>(null);
+    const [grupoInvitacionSel, setGrupoInvitacionSel] = useState<string>('AUTO');
 
     // Modalidades: 'GRUPOS' | 'MONITOREO_ACTIVOS' | 'INDIVIDUAL'
     const [modoEnvio, setModoEnvio] = useState<'GRUPOS' | 'MONITOREO_ACTIVOS' | 'INDIVIDUAL'>('GRUPOS');
@@ -862,11 +863,30 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
 
                                 {/* Pacientes en SAMÁN pendientes por abrir el Bot (con botón de copiar link directo por Cédula) */}
                                 <div className="pt-2 border-t border-slate-100 space-y-2 max-h-[42vh] overflow-y-auto pr-1">
-                                    <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                                        Pacientes Registrados en SAMÁN — Link de Vinculación Rápida ({pacientesSinVincularFiltrados.length})
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                                            Pacientes Registrados en SAMÁN — Link de Vinculación Rápida ({pacientesSinVincularFiltrados.length})
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-[10px] font-bold text-slate-600">👥 Grupo a invitar:</span>
+                                            <select
+                                                value={grupoInvitacionSel}
+                                                onChange={(e) => setGrupoInvitacionSel(e.target.value)}
+                                                className="px-2.5 py-1 rounded-lg border border-blue-200 bg-blue-50/70 text-[11px] font-bold text-blue-900"
+                                            >
+                                                <option value="AUTO">✨ Automático según Comunidad del Niño/a</option>
+                                                {gruposTelegram
+                                                    .filter((g) => g.estatus === 'ACTIVO' && g.inviteLink)
+                                                    .map((g) => (
+                                                        <option key={g.chatId} value={g.chatId}>
+                                                            {g.nombreTelegram}
+                                                        </option>
+                                                    ))}
+                                            </select>
+                                        </div>
                                     </div>
                                     <p className="text-[11px] text-slate-500">
-                                        Comparte este enlace con la madre/representante o pídele que le escriba su número de cédula a <strong>@{botUsername}</strong>:
+                                        El sistema asigna automáticamente el grupo que corresponde a la comunidad donde se registró el paciente:
                                     </p>
                                     {pacientesSinVincularFiltrados.map((p) => {
                                         const digitosTel = p.telefono ? String(p.telefono).replace(/\D/g, '') : '';
@@ -877,9 +897,35 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                                 ? digitosTel
                                                 : '58' + digitosTel
                                             : '';
-                                        const grupoActivoConLink = gruposTelegram.find((g) => g.estatus === 'ACTIVO' && g.inviteLink);
-                                        const textoGrupoExtra = grupoActivoConLink
-                                            ? `\n\n👥 Únete a nuestro grupo de Telegram "${grupoActivoConLink.nombreTelegram}": ${grupoActivoConLink.inviteLink}`
+
+                                        // Determinar automáticamente el grupo que le corresponde según la comunidad del paciente
+                                        const gruposActivosConLink = gruposTelegram.filter((g) => g.estatus === 'ACTIVO' && g.inviteLink);
+                                        let grupoCorrespondiente = gruposActivosConLink[0];
+                                        if (grupoInvitacionSel !== 'AUTO') {
+                                            grupoCorrespondiente =
+                                                gruposActivosConLink.find((g) => g.chatId === grupoInvitacionSel) || grupoCorrespondiente;
+                                        } else {
+                                            const comUpper = String(p.comunidad || '').toUpperCase();
+                                            const matchPorComunidad = gruposActivosConLink.find((g) => {
+                                                const nomGrupo = g.nombreTelegram.toUpperCase();
+                                                if (comUpper.includes('TEJER') && (nomGrupo.includes('TEJER') || nomGrupo.includes('CRISTO REY'))) {
+                                                    return true;
+                                                }
+                                                if (
+                                                    (comUpper.includes('NIÑO') || comUpper.includes('NINO') || comUpper.includes('ARIAS')) &&
+                                                    (nomGrupo.includes('NIÑO') || nomGrupo.includes('NINO'))
+                                                ) {
+                                                    return true;
+                                                }
+                                                return false;
+                                            });
+                                            if (matchPorComunidad) {
+                                                grupoCorrespondiente = matchPorComunidad;
+                                            }
+                                        }
+
+                                        const textoGrupoExtra = grupoCorrespondiente
+                                            ? `\n\n👥 Únete a nuestro grupo de Telegram "${grupoCorrespondiente.nombreTelegram}": ${grupoCorrespondiente.inviteLink}`
                                             : '';
                                         const textoBotExtra = `\n🤖 Activa también tus notificaciones automáticas aquí: ${p.linkVinculacion}`;
                                         const mensajeInvitacionPlano = `${mensajeTexto.trim()}\n${textoGrupoExtra}${textoBotExtra}`;
@@ -897,6 +943,11 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                                         </span>
                                                     )}{' '}
                                                     <span className="text-slate-600">— {p.nombresPacientes.join(', ')}</span>
+                                                    {grupoCorrespondiente && (
+                                                        <span className="ml-1.5 text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold">
+                                                            👉 {grupoCorrespondiente.nombreTelegram}
+                                                        </span>
+                                                    )}
                                                     {p.dadoDeAltaAutomatico && (
                                                         <span className="ml-2 text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">
                                                             Dado de Alta

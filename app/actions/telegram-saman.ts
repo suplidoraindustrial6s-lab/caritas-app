@@ -190,6 +190,7 @@ export async function obtenerDirectorioTelegramSaman() {
             {
                 cedula: string;
                 esMel: boolean;
+                comunidad: string;
                 nombresPacientes: string[];
                 ultimoTipoIngreso: string;
                 dadoDeAltaAutomatico: boolean;
@@ -209,9 +210,11 @@ export async function obtenerDirectorioTelegramSaman() {
             const ced = n.cedulaRepresentante.replace(/\D/g, '').trim();
             if (!ced) continue;
 
+            const comNino = n.jornada?.comunidad || 'TEJERÍAS';
             const actual = mapaPacientesPorCedula.get(ced) || {
                 cedula: ced,
                 esMel: false,
+                comunidad: comNino,
                 nombresPacientes: [] as string[],
                 ultimoTipoIngreso: n.tipoIngreso,
                 dadoDeAltaAutomatico: true, // Se vuelve false si al menos 1 niño sigue activo
@@ -225,6 +228,7 @@ export async function obtenerDirectorioTelegramSaman() {
             if (n.tipoIngreso !== 'SALIDA DE VIVERO') {
                 actual.dadoDeAltaAutomatico = false;
                 actual.ultimoTipoIngreso = n.tipoIngreso;
+                actual.comunidad = comNino;
             }
 
             mapaPacientesPorCedula.set(ced, actual);
@@ -243,9 +247,11 @@ export async function obtenerDirectorioTelegramSaman() {
             const ced = m.cedula.replace(/\D/g, '').trim();
             if (!ced) continue;
 
+            const comMel = m.jornada?.comunidad || 'TEJERÍAS';
             const actual = mapaPacientesPorCedula.get(ced) || {
                 cedula: ced,
                 esMel: true,
+                comunidad: comMel,
                 nombresPacientes: [] as string[],
                 ultimoTipoIngreso: m.tipoIngreso,
                 dadoDeAltaAutomatico: true,
@@ -259,6 +265,7 @@ export async function obtenerDirectorioTelegramSaman() {
             if (m.tipoIngreso !== 'SALIDA DE VIVERO') {
                 actual.dadoDeAltaAutomatico = false;
                 actual.ultimoTipoIngreso = m.tipoIngreso;
+                actual.comunidad = comMel;
             }
 
             mapaPacientesPorCedula.set(ced, actual);
@@ -300,6 +307,10 @@ export async function obtenerDirectorioTelegramSaman() {
                             if (expRes?.ok && expRes.result) {
                                 inviteLink = expRes.result;
                             }
+                        }
+                        // Fallback para el Grupo de Voluntarios Cáritas PQ La Milagrosa (-1003947280462)
+                        if (!inviteLink && String(c.chatId) === '-1003947280462') {
+                            inviteLink = 'https://t.me/+nFlsnpcdjWNkMzZh';
                         }
                     } catch {
                         // Ignorar si el bot no es admin en algún grupo antiguo
