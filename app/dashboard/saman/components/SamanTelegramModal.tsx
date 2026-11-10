@@ -340,10 +340,10 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
     });
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
-            <div className="bg-white rounded-3xl max-w-5xl w-full shadow-2xl border border-slate-100 overflow-hidden my-auto max-h-[94vh] flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-2 sm:p-3 overflow-y-auto">
+            <div className="bg-white rounded-3xl max-w-[96vw] xl:max-w-7xl w-full shadow-2xl border border-slate-100 overflow-hidden my-auto max-h-[97vh] flex flex-col">
                 {/* CABECERA DEL MODAL */}
-                <div className="bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 p-5 text-white flex flex-wrap items-center justify-between gap-3">
+                <div className="bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 px-5 py-3.5 text-white flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                         <div className="w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-xs flex items-center justify-center shadow-inner">
                             <Send className="w-5 h-5 text-white" />
@@ -393,9 +393,9 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                 </div>
 
                 {/* CUERPO PRINCIPAL DIVIDIDO EN 2 COLUMNAS */}
-                <div className="p-5 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
+                <div className="p-4 sm:p-5 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
                     {/* COLUMNA IZQUIERDA (7 COL): DESTINATARIOS (GRUPOS ACTIVOS / MONITOREO / INDIVIDUAL) */}
-                    <div className="lg:col-span-7 space-y-4">
+                    <div className="lg:col-span-7 space-y-3">
                         {/* SELECTOR DE LAS 3 MODALIDADES */}
                         <div className="grid grid-cols-3 gap-2 bg-slate-100 p-1.5 rounded-2xl">
                             <button
@@ -524,7 +524,7 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                         </p>
                                     </div>
                                 ) : (
-                                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                                    <div className="space-y-2">
                                         {gruposTelegram.map((g) => {
                                             const estaActivo = g.estatus === 'ACTIVO';
                                             const seleccionado = seleccionadosIds.includes(g.chatId);
@@ -773,7 +773,7 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                 />
 
                                 {/* Contactos de Telegram ya conectados */}
-                                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                                <div className="space-y-2">
                                     <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
                                         Personas Conectadas al Bot ({contactosIndividualesFiltrados.length})
                                     </div>
@@ -842,7 +842,7 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                 </div>
 
                                 {/* Pacientes en SAMÁN pendientes por abrir el Bot (con botón de copiar link directo por Cédula) */}
-                                <div className="pt-2 border-t border-slate-100 space-y-2 max-h-48 overflow-y-auto pr-1">
+                                <div className="pt-2 border-t border-slate-100 space-y-2 max-h-[42vh] overflow-y-auto pr-1">
                                     <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                                         Pacientes Registrados en SAMÁN — Link de Vinculación Rápida ({pacientesSinVincularFiltrados.length})
                                     </div>
@@ -939,8 +939,8 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                     </div>
 
                     {/* COLUMNA DERECHA (5 COL): REDACTOR Y PLANTILLA DE RECORDATORIO (1 DÍA ANTES) */}
-                    <div className="lg:col-span-5 bg-slate-50/90 p-4 rounded-3xl border border-slate-200/80 flex flex-col justify-between space-y-4">
-                        <div className="space-y-3">
+                    <div className="lg:col-span-5 bg-slate-50/90 p-4 rounded-3xl border border-slate-200/80 flex flex-col justify-between space-y-3">
+                        <div className="space-y-2.5 flex-1 flex flex-col">
                             <div className="flex items-center justify-between">
                                 <span className="text-xs font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                                     <Sparkles className="w-4 h-4 text-blue-600" />
@@ -974,53 +974,53 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                 </button>
                             </div>
 
-                            {/* Campos rápidos de Fecha, Hora y Lugar */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                <div>
-                                    <label className="block text-[11px] font-bold text-slate-600 mb-1 flex items-center gap-1">
-                                        <Calendar className="w-3 h-3 text-blue-600" /> Fecha Próxima Jornada
+                            {/* Campos rápidos de Fecha, Hora y Lugar en una sola fila compacta */}
+                            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                                <div className="sm:col-span-4">
+                                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5 flex items-center gap-1">
+                                        <Calendar className="w-3 h-3 text-blue-600" /> Fecha Jornada
                                     </label>
                                     <input
                                         type="date"
                                         value={fechaProxima}
                                         onChange={(e) => setFechaProxima(e.target.value)}
-                                        className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800"
+                                        className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800"
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-[11px] font-bold text-slate-600 mb-1 flex items-center gap-1">
-                                        <Clock className="w-3 h-3 text-blue-600" /> Hora de Atención
+                                <div className="sm:col-span-3">
+                                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5 flex items-center gap-1">
+                                        <Clock className="w-3 h-3 text-blue-600" /> Hora
                                     </label>
                                     <input
                                         type="text"
                                         value={horaProxima}
                                         onChange={(e) => setHoraProxima(e.target.value)}
-                                        className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800"
+                                        className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800"
                                     />
                                 </div>
-                                <div className="sm:col-span-2">
-                                    <label className="block text-[11px] font-bold text-slate-600 mb-1 flex items-center gap-1">
-                                        <MapPin className="w-3 h-3 text-blue-600" /> Lugar / Sitio de la Jornada
+                                <div className="sm:col-span-5">
+                                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5 flex items-center gap-1">
+                                        <MapPin className="w-3 h-3 text-blue-600" /> Lugar / Sitio
                                     </label>
                                     <input
                                         type="text"
                                         value={lugarProximo}
                                         onChange={(e) => setLugarProximo(e.target.value)}
-                                        className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800"
+                                        className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800"
                                     />
                                 </div>
                             </div>
 
-                            {/* Vista previa y editor del mensaje */}
-                            <div>
+                            {/* Vista previa y editor del mensaje completo sin necesidad de hacer scroll */}
+                            <div className="flex-1 flex flex-col">
                                 <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                                    Mensaje a Enviar (Puedes editar el texto libremente):
+                                    Mensaje a Enviar (Vista completa — puedes editar el texto libremente):
                                 </label>
                                 <textarea
-                                    rows={11}
+                                    rows={16}
                                     value={mensajeTexto}
                                     onChange={(e) => setMensajeTexto(e.target.value)}
-                                    className="w-full p-3 rounded-2xl border border-slate-200 bg-white text-xs text-slate-800 font-medium leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                    className="w-full flex-1 p-3 rounded-2xl border border-slate-200 bg-white text-xs text-slate-800 font-medium leading-snug focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"
                                 />
                             </div>
                         </div>
