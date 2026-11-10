@@ -316,6 +316,27 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
     if (!isOpen) return null;
 
     const gruposTelegram = contactos.filter((c) => c.tipo === 'GRUPO');
+    // Grupos de cohortes de pacientes (excluyendo el grupo de Voluntarios)
+    const gruposCohortesPacientes = gruposTelegram.filter(
+        (g) => g.estatus === 'ACTIVO' && !g.nombreTelegram.toUpperCase().includes('VOLUNTARIO')
+    );
+
+    // Función estricta que determina a qué grupo pertenece un paciente según la comunidad donde fue registrado
+    const obtenerGrupoPorComunidad = (comunidadPaciente?: string) => {
+        const comUpper = String(comunidadPaciente || '').toUpperCase();
+        if (comUpper.includes('NIÑO') || comUpper.includes('NINO')) {
+            return gruposCohortesPacientes.find(
+                (g) => g.nombreTelegram.toUpperCase().includes('NIÑO') || g.nombreTelegram.toUpperCase().includes('NINO')
+            );
+        }
+        // Todos los de Tejerías / Arias Blanco (cohorte actual) pertenecen a Cristo Rey - Tejerías
+        return (
+            gruposCohortesPacientes.find(
+                (g) => g.nombreTelegram.toUpperCase().includes('TEJER') || g.nombreTelegram.toUpperCase().includes('CRISTO REY')
+            ) || gruposCohortesPacientes[0]
+        );
+    };
+
     const contactosIndividuales = contactos.filter((c) => c.tipo === 'INDIVIDUAL');
     const contactosActivosMonitoreo = contactosIndividuales.filter((c) => c.estatus === 'ACTIVO');
     const contactosDadosDeAlta = contactosIndividuales.filter((c) => c.estatus === 'DADO_DE_ALTA');
@@ -333,6 +354,12 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
     const pacientesSinVincularFiltrados = pacientesSaman
         .filter((p) => {
             if (p.vinculado) return false;
+            if (grupoInvitacionSel !== 'AUTO') {
+                const grupoReal = obtenerGrupoPorComunidad(p.comunidad);
+                if (!grupoReal || grupoReal.chatId !== grupoInvitacionSel) {
+                    return false;
+                }
+            }
             if (!busquedaIndividual.trim()) return true;
             const q = busquedaIndividual.toLowerCase();
             return (
@@ -868,92 +895,76 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                             Pacientes Registrados en SAMÁN — Link de Vinculación Rápida ({pacientesSinVincularFiltrados.length})
                                         </div>
                                         <div className="flex items-center gap-1.5">
-                                            <span className="text-[10px] font-bold text-slate-600">👥 Grupo a invitar:</span>
+                                            <span className="text-[10px] font-bold text-slate-600">🔍 Filtrar por Sector / Grupo:</span>
                                             <select
                                                 value={grupoInvitacionSel}
                                                 onChange={(e) => setGrupoInvitacionSel(e.target.value)}
                                                 className="px-2.5 py-1 rounded-lg border border-blue-200 bg-blue-50/70 text-[11px] font-bold text-blue-900"
                                             >
-                                                <option value="AUTO">✨ Automático según Comunidad del Niño/a</option>
-                                                {gruposTelegram
-                                                    .filter((g) => g.estatus === 'ACTIVO' && g.inviteLink)
-                                                    .map((g) => (
+                                                <option value="AUTO">📋 Todos los Sectores ({pacientesSaman.filter((p) => !p.vinculado).length})</option>
+                                                {gruposCohortesPacientes.map((g) => {
+                                                    const cantEnGrupo = pacientesSaman.filter(
+                                                        (p) => !p.vinculado && obtenerGrupoPorComunidad(p.comunidad)?.chatId === g.chatId
+                                                    ).length;
+                                                    return (
                                                         <option key={g.chatId} value={g.chatId}>
-                                                            {g.nombreTelegram}
+                                                            {g.nombreTelegram} ({cantEnGrupo} pacientes)
                                                         </option>
-                                                    ))}
+                                                    );
+                                                })}
                                             </select>
                                         </div>
                                     </div>
                                     <p className="text-[11px] text-slate-500">
-                                        El sistema asigna automáticamente el grupo que corresponde a la comunidad donde se registró el paciente:
+                                        Cada paciente tiene asignado únicamente el grupo del sector donde fue registrado:
                                     </p>
-                                    {pacientesSinVincularFiltrados.map((p) => {
-                                        const digitosTel = p.telefono ? String(p.telefono).replace(/\D/g, '') : '';
-                                        const numeroInternacional = digitosTel
-                                            ? digitosTel.startsWith('0')
-                                                ? '58' + digitosTel.slice(1)
-                                                : digitosTel.startsWith('58')
-                                                ? digitosTel
-                                                : '58' + digitosTel
-                                            : '';
+                                    {pacientesSinVincularFiltrados.length === 0 ? (
+                                        <div className="p-4 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs text-slate-500">
+                                            Aún no hay pacientes registrados en este sector/grupo. Cuando registres niños en la jornada de este sector, aparecerán aquí automáticamente.
+                                        </div>
+                                    ) : (
+                                        pacientesSinVincularFiltrados.map((p) => {
+                                            const digitosTel = p.telefono ? String(p.telefono).replace(/\D/g, '') : '';
+                                            const numeroInternacional = digitosTel
+                                                ? digitosTel.startsWith('0')
+                                                    ? '58' + digitosTel.slice(1)
+                                                    : digitosTel.startsWith('58')
+                                                    ? digitosTel
+                                                    : '58' + digitosTel
+                                                : '';
 
-                                        // Determinar automáticamente el grupo que le corresponde según la comunidad del paciente
-                                        const gruposActivosConLink = gruposTelegram.filter((g) => g.estatus === 'ACTIVO' && g.inviteLink);
-                                        let grupoCorrespondiente = gruposActivosConLink[0];
-                                        if (grupoInvitacionSel !== 'AUTO') {
-                                            grupoCorrespondiente =
-                                                gruposActivosConLink.find((g) => g.chatId === grupoInvitacionSel) || grupoCorrespondiente;
-                                        } else {
-                                            const comUpper = String(p.comunidad || '').toUpperCase();
-                                            const matchPorComunidad = gruposActivosConLink.find((g) => {
-                                                const nomGrupo = g.nombreTelegram.toUpperCase();
-                                                if (comUpper.includes('TEJER') && (nomGrupo.includes('TEJER') || nomGrupo.includes('CRISTO REY'))) {
-                                                    return true;
-                                                }
-                                                if (
-                                                    (comUpper.includes('NIÑO') || comUpper.includes('NINO') || comUpper.includes('ARIAS')) &&
-                                                    (nomGrupo.includes('NIÑO') || nomGrupo.includes('NINO'))
-                                                ) {
-                                                    return true;
-                                                }
-                                                return false;
-                                            });
-                                            if (matchPorComunidad) {
-                                                grupoCorrespondiente = matchPorComunidad;
-                                            }
-                                        }
+                                            const grupoCorrespondiente = obtenerGrupoPorComunidad(p.comunidad);
 
-                                        const textoGrupoExtra = grupoCorrespondiente
-                                            ? `\n\n👥 Únete a nuestro grupo de Telegram "${grupoCorrespondiente.nombreTelegram}": ${grupoCorrespondiente.inviteLink}`
-                                            : '';
-                                        const textoBotExtra = `\n🤖 Activa también tus notificaciones automáticas aquí: ${p.linkVinculacion}`;
-                                        const mensajeInvitacionPlano = `${mensajeTexto.trim()}\n${textoGrupoExtra}${textoBotExtra}`;
-                                        const textoCodificado = encodeURIComponent(mensajeInvitacionPlano);
-                                        return (
-                                            <div
-                                                key={p.cedula}
-                                                className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-wrap items-center justify-between gap-2 text-xs"
-                                            >
-                                                <div className="truncate flex-1 min-w-[180px]">
-                                                    <span className="font-bold text-slate-800">C.I. {p.cedula}</span>{' '}
-                                                    {p.telefono && (
-                                                        <span className="text-emerald-700 font-extrabold">
-                                                            (📞 {p.telefono})
-                                                        </span>
-                                                    )}{' '}
-                                                    <span className="text-slate-600">— {p.nombresPacientes.join(', ')}</span>
-                                                    {grupoCorrespondiente && (
-                                                        <span className="ml-1.5 text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold">
-                                                            👉 {grupoCorrespondiente.nombreTelegram}
-                                                        </span>
-                                                    )}
-                                                    {p.dadoDeAltaAutomatico && (
-                                                        <span className="ml-2 text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">
-                                                            Dado de Alta
-                                                        </span>
-                                                    )}
-                                                </div>
+                                            const textoGrupoExtra = grupoCorrespondiente?.inviteLink
+                                                ? `\n\n👥 Únete a nuestro grupo de Telegram "${grupoCorrespondiente.nombreTelegram}": ${grupoCorrespondiente.inviteLink}`
+                                                : '';
+                                            const textoBotExtra = `\n🤖 Activa también tus notificaciones automáticas aquí: ${p.linkVinculacion}`;
+                                            const mensajeInvitacionPlano = `${mensajeTexto.trim()}\n${textoGrupoExtra}${textoBotExtra}`;
+                                            const textoCodificado = encodeURIComponent(mensajeInvitacionPlano);
+                                            return (
+                                                <div
+                                                    key={p.cedula}
+                                                    className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-wrap items-center justify-between gap-2 text-xs"
+                                                >
+                                                    <div className="truncate flex-1 min-w-[180px]">
+                                                        <span className="font-bold text-slate-800">C.I. {p.cedula}</span>{' '}
+                                                        {p.telefono && (
+                                                            <span className="text-emerald-700 font-extrabold">
+                                                                (📞 {p.telefono})
+                                                            </span>
+                                                        )}{' '}
+                                                        <span className="text-slate-600">— {p.nombresPacientes.join(', ')}</span>
+                                                        {grupoCorrespondiente && (
+                                                            <span className="ml-1.5 text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold">
+                                                                👉 {grupoCorrespondiente.nombreTelegram}
+                                                            </span>
+                                                        )}
+                                                        {p.dadoDeAltaAutomatico && (
+                                                            <span className="ml-2 text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">
+                                                                Dado de Alta
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 <div className="flex flex-wrap items-center gap-1.5 flex-none">
                                                     {numeroInternacional && (
                                                         <>
@@ -1003,7 +1014,8 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                                 </div>
                                             </div>
                                         );
-                                    })}
+                                        })
+                                    )}
                                 </div>
                             </div>
                         )}
