@@ -375,10 +375,10 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
         });
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-2 sm:p-3 overflow-y-auto">
-            <div className="bg-white rounded-3xl max-w-[96vw] xl:max-w-7xl w-full shadow-2xl border border-slate-100 overflow-hidden my-auto max-h-[97vh] flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-1 sm:p-1.5">
+            <div className="bg-white rounded-2xl w-[99vw] h-[98vh] max-w-none shadow-2xl border border-slate-100 overflow-hidden flex flex-col">
                 {/* CABECERA DEL MODAL */}
-                <div className="bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 px-5 py-3.5 text-white flex flex-wrap items-center justify-between gap-3">
+                <div className="bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 px-5 py-2.5 text-white flex flex-wrap items-center justify-between gap-2 flex-none">
                     <div className="flex items-center gap-3">
                         <div className="w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-xs flex items-center justify-center shadow-inner">
                             <Send className="w-5 h-5 text-white" />
@@ -428,9 +428,9 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                 </div>
 
                 {/* CUERPO PRINCIPAL DIVIDIDO EN 2 COLUMNAS */}
-                <div className="p-4 sm:p-5 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
+                <div className="p-3 sm:p-4 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0">
                     {/* COLUMNA IZQUIERDA (7 COL): DESTINATARIOS (GRUPOS ACTIVOS / MONITOREO / INDIVIDUAL) */}
-                    <div className="lg:col-span-7 space-y-3">
+                    <div className="lg:col-span-7 flex flex-col space-y-2.5 min-h-0">
                         {/* SELECTOR DE LAS 3 MODALIDADES */}
                         <div className="grid grid-cols-3 gap-2 bg-slate-100 p-1.5 rounded-2xl">
                             <button
@@ -798,8 +798,8 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                         {/* VISTA MODO 3: ENVÍO PERSONAL / INDIVIDUAL Y VINCULACIÓN POR CÉDULA        */}
                         {/* ========================================================================= */}
                         {modoEnvio === 'INDIVIDUAL' && (
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2">
+                            <div className="flex flex-col flex-1 space-y-2.5 min-h-0">
+                                <div className="flex items-center gap-2 flex-none">
                                     <input
                                         type="text"
                                         value={busquedaIndividual}
@@ -889,7 +889,7 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                 </div>
 
                                 {/* Pacientes en SAMÁN pendientes por abrir el Bot (con botón de copiar link directo por Cédula) */}
-                                <div className="pt-2 border-t border-slate-100 space-y-2 max-h-[42vh] overflow-y-auto pr-1">
+                                <div className="pt-2 border-t border-slate-100 space-y-2 flex-1 overflow-y-auto pr-1 min-h-0">
                                     <div className="flex flex-wrap items-center justify-between gap-2">
                                         <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                                             Pacientes Registrados en SAMÁN — Link de Vinculación Rápida ({pacientesSinVincularFiltrados.length})
@@ -1095,12 +1095,12 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                             </div>
 
                             {/* Vista previa y editor del mensaje completo sin necesidad de hacer scroll */}
-                            <div className="flex-1 flex flex-col">
+                            <div className="flex-1 flex flex-col min-h-0">
                                 <label className="block text-[11px] font-bold text-slate-600 mb-1">
                                     Mensaje a Enviar (Vista completa — puedes editar el texto libremente):
                                 </label>
                                 <textarea
-                                    rows={16}
+                                    rows={20}
                                     value={mensajeTexto}
                                     onChange={(e) => setMensajeTexto(e.target.value)}
                                     className="w-full flex-1 p-3 rounded-2xl border border-slate-200 bg-white text-xs text-slate-800 font-medium leading-snug focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"
