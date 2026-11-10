@@ -213,9 +213,20 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
     const handleSincronizarBot = async () => {
         setSincronizando(true);
         setResultadoEnvio(null);
-        await sincronizarContactosTelegram();
-        await cargarDirectorio();
-        setSincronizando(false);
+        try {
+            await cargarDirectorio();
+            setResultadoEnvio({
+                ok: true,
+                texto: '✅ Sincronización completada con @caritasPQLamilagrosa_bot.',
+            });
+        } catch (err) {
+            setResultadoEnvio({
+                ok: false,
+                texto: '⚠️ Error al sincronizar con Telegram. Intenta nuevamente.',
+            });
+        } finally {
+            setSincronizando(false);
+        }
     };
 
     const toggleDestinatario = (chatId: string) => {

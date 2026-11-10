@@ -53,13 +53,18 @@ async function asegurarTablaTelegram() {
  * Consulta la API de Telegram (getUpdates) para detectar nuevos usuarios o grupos
  * que hayan iniciado conversación con @caritasPQLamilagrosa_bot
  */
-export async function sincronizarContactosTelegram() {
+export async function sincronizarContactosTelegram(omitirRevalidate = false) {
     try {
         await asegurarTablaTelegram();
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+
         const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?limit=100`, {
             cache: 'no-store',
+            signal: controller.signal,
         });
+        clearTimeout(timeoutId);
         const data = await res.json();
 
         if (!data.ok || !Array.isArray(data.result)) {
@@ -113,19 +118,25 @@ export async function sincronizarContactosTelegram() {
                     VALUES ('${chatId.replace(/'/g, "''")}', '${tipo}', ${nombreSql}, ${userSql}, ${cedulaSql}, '${categoriaInicial}', 'ACTIVO', '${ahora}')
                 `);
                 nuevosOActualizados++;
-            } else if (cedulaDetectada && !existentes[0].cedula) {
-                // Si ya existía pero acaba de enviar su cédula, se la asociamos automáticamente
-                const cedulaLimpia = cedulaDetectada.replace(/\D/g, '');
+            } else {
+                const cedulaLimpia = cedulaDetectada ? cedulaDetectada.replace(/\D/g, '') : existentes[0].cedula;
+                const cedulaUpdateSql = cedulaLimpia ? `'${String(cedulaLimpia).replace(/'/g, "''")}'` : 'NULL';
+                const nombreSql = `'${nombreTelegram.replace(/'/g, "''")}'`;
                 await prisma.$executeRawUnsafe(`
                     UPDATE "TelegramContactoSaman"
-                    SET "cedula" = '${cedulaLimpia}', "updatedAt" = '${ahora}'
+                    SET "nombreTelegram" = ${nombreSql},
+                        "tipo" = '${tipo}',
+                        "cedula" = ${cedulaUpdateSql},
+                        "updatedAt" = '${ahora}'
                     WHERE "chatId" = '${chatId.replace(/'/g, "''")}'
                 `);
                 nuevosOActualizados++;
             }
         }
 
-        revalidatePath('/dashboard/saman');
+        if (!omitirRevalidate) {
+            revalidatePath('/dashboard/saman');
+        }
         return { success: true, nuevosOActualizados };
     } catch (error) {
         console.error('Error sincronizando contactos de Telegram:', error);
@@ -140,12 +151,25 @@ export async function sincronizarContactosTelegram() {
 export async function obtenerDirectorioTelegramSaman() {
     try {
         await asegurarTablaTelegram();
-        // Sincronizar silenciosamente últimos mensajes al bot
-        await sincronizarContactosTelegram().catch(() => null);
+        // Sincronizar silenciosamente últimos mensajes al bot sin revalidar ruta para respuesta instantánea
+        await sincronizarContactosTelegram(true).catch(() => null);
 
-        const contactosRaw = await prisma.$queryRawUnsafe<any[]>(
+        let contactosRaw = await prisma.$queryRawUnsafe<any[]>(
             `SELECT * FROM "TelegramContactoSaman" ORDER BY "updatedAt" DESC`
         );
+
+        // Asegurar que el grupo oficial creado "SAMAN grupo Cristo Rey - Tejerías" (-1004451440606) esté registrado
+        const existeGrupoCristoRey = contactosRaw.some((c) => String(c.chatId) === '-1004451440606');
+        if (!existeGrupoCristoRey) {
+            const ahora = new Date().toISOString();
+            await prisma.$executeRawUnsafe(`
+                INSERT INTO "TelegramContactoSaman" ("chatId", "tipo", "nombreTelegram", "username", "cedula", "categoria", "estatus", "updatedAt")
+                VALUES ('-1004451440606', 'GRUPO', 'SAMAN grupo Cristo Rey - Tejerías', NULL, NULL, 'COHORTE_ACTIVA', 'ACTIVO', '${ahora}')
+            `).catch(() => null);
+            contactosRaw = await prisma.$queryRawUnsafe<any[]>(
+                `SELECT * FROM "TelegramContactoSaman" ORDER BY "updatedAt" DESC`
+            );
+        }
 
         // Obtener historial de niños y MEL para saber quiénes están activos y quiénes dados de alta
         const ninos = await prisma.registroSamanNinos.findMany({
