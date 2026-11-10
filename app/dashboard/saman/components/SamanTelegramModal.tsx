@@ -794,16 +794,15 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                     </p>
                                     {pacientesSinVincularFiltrados.map((p) => {
                                         const digitosTel = p.telefono ? String(p.telefono).replace(/\D/g, '') : '';
-                                        const numeroWa = digitosTel
+                                        const numeroInternacional = digitosTel
                                             ? digitosTel.startsWith('0')
                                                 ? '58' + digitosTel.slice(1)
                                                 : digitosTel.startsWith('58')
                                                 ? digitosTel
                                                 : '58' + digitosTel
                                             : '';
-                                        const textoInvitacionWa = encodeURIComponent(
-                                            `¡Hola! 💛 Te escribimos de Cáritas Parroquial La Milagrosa (Programa SAMÁN). Toca este enlace y presiona "INICIAR" en Telegram para recibir los recordatorios de tu próxima jornada de monitoreo nutricional: ${p.linkVinculacion}`
-                                        );
+                                        const mensajeInvitacionPlano = `¡Hola! 💛 Te escribimos de Cáritas Parroquial La Milagrosa (Programa SAMÁN). Toca este enlace y presiona "INICIAR" en Telegram para recibir los recordatorios de tu próxima jornada de monitoreo nutricional: ${p.linkVinculacion}`;
+                                        const textoInvitacionWa = encodeURIComponent(mensajeInvitacionPlano);
                                         return (
                                             <div
                                                 key={p.cedula}
@@ -823,17 +822,34 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                                         </span>
                                                     )}
                                                 </div>
-                                                <div className="flex items-center gap-1.5 flex-none">
-                                                    {numeroWa && (
-                                                        <a
-                                                            href={`https://wa.me/${numeroWa}?text=${textoInvitacionWa}`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 cursor-pointer shadow-2xs"
-                                                            title="Enviar enlace de activación del Bot directamente al teléfono de la representante"
-                                                        >
-                                                            <span>📲 Enviar a {p.telefono}</span>
-                                                        </a>
+                                                <div className="flex flex-wrap items-center gap-1.5 flex-none">
+                                                    {numeroInternacional && (
+                                                        <>
+                                                            <a
+                                                                href={`https://t.me/+${numeroInternacional}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                onClick={() => copiarTexto(mensajeInvitacionPlano, `tg-${p.cedula}`)}
+                                                                className="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-bold text-[11px] flex items-center gap-1 cursor-pointer shadow-2xs"
+                                                                title="Copia automáticamente la invitación y abre el chat de Telegram de este número (+58...)"
+                                                            >
+                                                                <Send className="w-3 h-3" />
+                                                                <span>
+                                                                    {copiadoId === `tg-${p.cedula}`
+                                                                        ? '¡Copiado! Abriendo Telegram...'
+                                                                        : `Abrir su Telegram`}
+                                                                </span>
+                                                            </a>
+                                                            <a
+                                                                href={`https://wa.me/${numeroInternacional}?text=${textoInvitacionWa}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 cursor-pointer shadow-2xs"
+                                                                title="Enviar enlace de activación del Bot por WhatsApp al teléfono de la representante"
+                                                            >
+                                                                <span>📲 WhatsApp</span>
+                                                            </a>
+                                                        </>
                                                     )}
                                                     <button
                                                         type="button"
