@@ -879,10 +879,11 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                             : '';
                                         const grupoActivoConLink = gruposTelegram.find((g) => g.estatus === 'ACTIVO' && g.inviteLink);
                                         const textoGrupoExtra = grupoActivoConLink
-                                            ? `\n\n👥 También puedes unirte directamente a nuestro grupo "${grupoActivoConLink.nombreTelegram}" tocando aquí: ${grupoActivoConLink.inviteLink}`
+                                            ? `\n\n👥 Únete a nuestro grupo de Telegram "${grupoActivoConLink.nombreTelegram}": ${grupoActivoConLink.inviteLink}`
                                             : '';
-                                        const mensajeInvitacionPlano = `¡Hola! 💛 Te escribimos de Cáritas Parroquial La Milagrosa (Programa SAMÁN). Toca este enlace y presiona "INICIAR" en Telegram para recibir los recordatorios de tu próxima jornada de monitoreo nutricional: ${p.linkVinculacion}${textoGrupoExtra}`;
-                                        const textoInvitacionWa = encodeURIComponent(mensajeInvitacionPlano);
+                                        const textoBotExtra = `\n🤖 Activa también tus notificaciones automáticas aquí: ${p.linkVinculacion}`;
+                                        const mensajeInvitacionPlano = `${mensajeTexto.trim()}\n${textoGrupoExtra}${textoBotExtra}`;
+                                        const textoCodificado = encodeURIComponent(mensajeInvitacionPlano);
                                         return (
                                             <div
                                                 key={p.cedula}
@@ -906,26 +907,26 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                                     {numeroInternacional && (
                                                         <>
                                                             <a
-                                                                href={`https://t.me/+${numeroInternacional}`}
+                                                                href={`https://t.me/+${numeroInternacional}?text=${textoCodificado}`}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
                                                                 onClick={() => copiarTexto(mensajeInvitacionPlano, `tg-${p.cedula}`)}
                                                                 className="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-bold text-[11px] flex items-center gap-1 cursor-pointer shadow-2xs"
-                                                                title="Copia automáticamente la invitación y abre el chat de Telegram de este número (+58...)"
+                                                                title="Abre el chat de Telegram con el Recordatorio de la Jornada ya listo y copiado (presiona Ctrl+V en Telegram Web)"
                                                             >
                                                                 <Send className="w-3 h-3" />
                                                                 <span>
                                                                     {copiadoId === `tg-${p.cedula}`
-                                                                        ? '¡Copiado! Abriendo Telegram...'
+                                                                        ? '¡Copiado! Presiona Ctrl+V en Telegram'
                                                                         : `Abrir su Telegram`}
                                                                 </span>
                                                             </a>
                                                             <a
-                                                                href={`https://wa.me/${numeroInternacional}?text=${textoInvitacionWa}`}
+                                                                href={`https://wa.me/${numeroInternacional}?text=${textoCodificado}`}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
                                                                 className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 cursor-pointer shadow-2xs"
-                                                                title="Enviar enlace de activación del Bot por WhatsApp al teléfono de la representante"
+                                                                title="Enviar el Recordatorio de la Jornada + Link del Grupo y Bot por WhatsApp"
                                                             >
                                                                 <span>📲 WhatsApp</span>
                                                             </a>
