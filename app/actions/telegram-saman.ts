@@ -2,6 +2,7 @@
 
 import prisma from '@/app/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { obtenerMapaTelefonosSaman } from '@/app/actions/saman';
 
 // Token oficial del Bot de Cáritas Parroquial La Milagrosa (@caritasPQLamilagrosa_bot)
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '9235182085:AAGIJCWrRADIASxh5wnY5g4T3pTyd8kHRG8';
@@ -21,6 +22,7 @@ export interface ContactoTelegramSaman {
         nombresPacientes: string[];
         ultimoTipoIngreso: string;
         dadoDeAltaAutomatico: boolean;
+        telefono?: string;
     };
 }
 
@@ -236,10 +238,13 @@ export async function obtenerDirectorioTelegramSaman() {
             mapaPacientesPorCedula.set(ced, actual);
         }
 
+        const mapaTelefonos = await obtenerMapaTelefonosSaman();
+
         // Enriquecer contactos de Telegram con la información clínica de SAMÁN
         const contactos: ContactoTelegramSaman[] = contactosRaw.map((c) => {
             const cedLimpia = c.cedula ? String(c.cedula).replace(/\D/g, '').trim() : '';
             const infoSaman = cedLimpia ? mapaPacientesPorCedula.get(cedLimpia) : undefined;
+            const telSaman = cedLimpia ? mapaTelefonos.get(cedLimpia) || '' : '';
 
             // Si el paciente ya tuvo SALIDA DE VIVERO en todos sus registros, se considera dado de alta
             const estatusEfectivo =
@@ -261,6 +266,7 @@ export async function obtenerDirectorioTelegramSaman() {
                           nombresPacientes: infoSaman.nombresPacientes,
                           ultimoTipoIngreso: infoSaman.ultimoTipoIngreso,
                           dadoDeAltaAutomatico: infoSaman.dadoDeAltaAutomatico,
+                          telefono: telSaman,
                       }
                     : undefined,
             };
@@ -269,8 +275,10 @@ export async function obtenerDirectorioTelegramSaman() {
         // Lista de pacientes de SAMÁN para facilitar vinculación por cédula
         const pacientesSaman = Array.from(mapaPacientesPorCedula.values()).map((p) => {
             const contactoVinculado = contactos.find((c) => c.cedula === p.cedula);
+            const tel = mapaTelefonos.get(p.cedula) || '';
             return {
                 ...p,
+                telefono: tel,
                 vinculado: Boolean(contactoVinculado),
                 chatId: contactoVinculado?.chatId || null,
                 linkVinculacion: `https://t.me/${TELEGRAM_BOT_USERNAME}?start=${p.cedula}`,

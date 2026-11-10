@@ -642,6 +642,11 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                                                         (C.I. {c.cedula})
                                                                     </span>
                                                                 )}
+                                                                {c.pacienteInfo?.telefono && (
+                                                                    <span className="text-slate-500 font-semibold ml-1">
+                                                                        • 📞 {c.pacienteInfo.telefono}
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                             {c.pacienteInfo ? (
                                                                 <div className="text-[11px] text-slate-600 truncate">
@@ -740,6 +745,11 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                                             <div className="text-xs font-bold text-slate-900">
                                                                 {c.nombreTelegram}{' '}
                                                                 {c.username && <span className="text-slate-400 font-normal">@{c.username}</span>}
+                                                                {c.pacienteInfo?.telefono && (
+                                                                    <span className="text-emerald-700 font-semibold ml-1">
+                                                                        • 📞 {c.pacienteInfo.telefono}
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                             {c.pacienteInfo ? (
                                                                 <div className="text-[11px] text-indigo-700 font-semibold truncate">
@@ -782,39 +792,70 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                     <p className="text-[11px] text-slate-500">
                                         Comparte este enlace con la madre/representante o pídele que le escriba su número de cédula a <strong>@{botUsername}</strong>:
                                     </p>
-                                    {pacientesSinVincularFiltrados.map((p) => (
-                                        <div
-                                            key={p.cedula}
-                                            className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between gap-2 text-xs"
-                                        >
-                                            <div className="truncate">
-                                                <span className="font-bold text-slate-800">C.I. {p.cedula}</span>{' '}
-                                                <span className="text-slate-600">— {p.nombresPacientes.join(', ')}</span>
-                                                {p.dadoDeAltaAutomatico && (
-                                                    <span className="ml-2 text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">
-                                                        Dado de Alta
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => copiarTexto(p.linkVinculacion, `link-${p.cedula}`)}
-                                                className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-blue-50 text-blue-700 font-bold text-[11px] flex items-center gap-1 flex-none cursor-pointer"
+                                    {pacientesSinVincularFiltrados.map((p) => {
+                                        const digitosTel = p.telefono ? String(p.telefono).replace(/\D/g, '') : '';
+                                        const numeroWa = digitosTel
+                                            ? digitosTel.startsWith('0')
+                                                ? '58' + digitosTel.slice(1)
+                                                : digitosTel.startsWith('58')
+                                                ? digitosTel
+                                                : '58' + digitosTel
+                                            : '';
+                                        const textoInvitacionWa = encodeURIComponent(
+                                            `¡Hola! 💛 Te escribimos de Cáritas Parroquial La Milagrosa (Programa SAMÁN). Toca este enlace y presiona "INICIAR" en Telegram para recibir los recordatorios de tu próxima jornada de monitoreo nutricional: ${p.linkVinculacion}`
+                                        );
+                                        return (
+                                            <div
+                                                key={p.cedula}
+                                                className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-wrap items-center justify-between gap-2 text-xs"
                                             >
-                                                {copiadoId === `link-${p.cedula}` ? (
-                                                    <>
-                                                        <Check className="w-3 h-3 text-emerald-600" />
-                                                        <span>Copiado</span>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Copy className="w-3 h-3" />
-                                                        <span>Copiar Link Bot</span>
-                                                    </>
-                                                )}
-                                            </button>
-                                        </div>
-                                    ))}
+                                                <div className="truncate flex-1 min-w-[180px]">
+                                                    <span className="font-bold text-slate-800">C.I. {p.cedula}</span>{' '}
+                                                    {p.telefono && (
+                                                        <span className="text-emerald-700 font-extrabold">
+                                                            (📞 {p.telefono})
+                                                        </span>
+                                                    )}{' '}
+                                                    <span className="text-slate-600">— {p.nombresPacientes.join(', ')}</span>
+                                                    {p.dadoDeAltaAutomatico && (
+                                                        <span className="ml-2 text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">
+                                                            Dado de Alta
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-1.5 flex-none">
+                                                    {numeroWa && (
+                                                        <a
+                                                            href={`https://wa.me/${numeroWa}?text=${textoInvitacionWa}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 cursor-pointer shadow-2xs"
+                                                            title="Enviar enlace de activación del Bot directamente al teléfono de la representante"
+                                                        >
+                                                            <span>📲 Enviar a {p.telefono}</span>
+                                                        </a>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => copiarTexto(p.linkVinculacion, `link-${p.cedula}`)}
+                                                        className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-blue-50 text-blue-700 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
+                                                    >
+                                                        {copiadoId === `link-${p.cedula}` ? (
+                                                            <>
+                                                                <Check className="w-3 h-3 text-emerald-600" />
+                                                                <span>Copiado</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Copy className="w-3 h-3" />
+                                                                <span>Copiar Link Bot</span>
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}

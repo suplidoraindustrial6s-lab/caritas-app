@@ -14,6 +14,69 @@ import {
 } from '@/app/lib/saman-calculations';
 
 /**
+ * Asegura la tabla auxiliar de números de teléfono por cédula (Representantes y MEL)
+ * Compatible 100% con PostgreSQL (Producción) y SQLite (Desarrollo)
+ */
+async function asegurarTablaTelefonosSaman() {
+    try {
+        await prisma.$executeRawUnsafe(`
+            CREATE TABLE IF NOT EXISTS "TelefonoPacienteSaman" (
+                "cedula" TEXT PRIMARY KEY,
+                "telefono" TEXT NOT NULL DEFAULT '',
+                "updatedAt" TEXT
+            )
+        `);
+    } catch (error) {
+        console.error('Error asegurando tabla TelefonoPacienteSaman:', error);
+    }
+}
+
+async function guardarTelefonoPorCedula(cedula: string, telefono?: string) {
+    try {
+        const cedLimpia = String(cedula || '').replace(/\D/g, '').trim();
+        const telLimpio = String(telefono || '').trim().replace(/'/g, "''");
+        if (!cedLimpia || !telLimpio) return;
+
+        await asegurarTablaTelefonosSaman();
+        const ahora = new Date().toISOString();
+        const existentes = await prisma.$queryRawUnsafe<any[]>(
+            `SELECT * FROM "TelefonoPacienteSaman" WHERE "cedula" = '${cedLimpia}'`
+        );
+
+        if (!existentes || existentes.length === 0) {
+            await prisma.$executeRawUnsafe(`
+                INSERT INTO "TelefonoPacienteSaman" ("cedula", "telefono", "updatedAt")
+                VALUES ('${cedLimpia}', '${telLimpio}', '${ahora}')
+            `);
+        } else {
+            await prisma.$executeRawUnsafe(`
+                UPDATE "TelefonoPacienteSaman"
+                SET "telefono" = '${telLimpio}', "updatedAt" = '${ahora}'
+                WHERE "cedula" = '${cedLimpia}'
+            `);
+        }
+    } catch (error) {
+        console.error('Error guardando teléfono SAMÁN:', error);
+    }
+}
+
+export async function obtenerMapaTelefonosSaman(): Promise<Map<string, string>> {
+    const mapa = new Map<string, string>();
+    try {
+        await asegurarTablaTelefonosSaman();
+        const filas = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM "TelefonoPacienteSaman"`);
+        for (const f of filas) {
+            if (f.cedula && f.telefono) {
+                mapa.set(String(f.cedula).replace(/\D/g, '').trim(), String(f.telefono).trim());
+            }
+        }
+    } catch (error) {
+        console.error('Error leyendo teléfonos SAMÁN:', error);
+    }
+    return mapa;
+}
+
+/**
  * Calcula los 11 indicadores institucionales en vivo de una jornada SAMÁN
  */
 function calcularIndicadoresJornada(ninos: any[], embarazadas: any[]) {
@@ -159,13 +222,27 @@ export async function obtenerDatosModuloSaman(jornadaIdSeleccionada?: number) {
             return { success: false, error: 'Jornada no encontrada' };
         }
 
-        const indicadores = calcularIndicadoresJornada(jornadaActiva.ninos, jornadaActiva.embarazadas);
+        const mapaTelefonos = await obtenerMapaTelefonosSaman();
+        const ninosConTel = jornadaActiva.ninos.map((n: any) => ({
+            ...n,
+            telefonoRepresentante: mapaTelefonos.get(String(n.cedulaRepresentante).replace(/\D/g, '').trim()) || '',
+        }));
+        const embarazadasConTel = jornadaActiva.embarazadas.map((m: any) => ({
+            ...m,
+            telefono: mapaTelefonos.get(String(m.cedula).replace(/\D/g, '').trim()) || '',
+        }));
+
+        const indicadores = calcularIndicadoresJornada(ninosConTel, embarazadasConTel);
 
         return {
             success: true,
             data: {
                 jornadas,
-                jornadaActiva,
+                jornadaActiva: {
+                    ...jornadaActiva,
+                    ninos: ninosConTel,
+                    embarazadas: embarazadasConTel,
+                },
                 indicadores,
             },
         };
@@ -249,6 +326,7 @@ export async function buscarHistorialNinoPorCedula(cedula: string) {
             }
         }
 
+        const mapaTelefonos = await obtenerMapaTelefonosSaman();
         const data: any[] = [];
         for (const { registros: histList, ultimo } of mapaNino.values()) {
             const totalReingresos = histList.filter((r) => r.tipoIngreso === 'REINGRESO').length;
@@ -290,6 +368,7 @@ export async function buscarHistorialNinoPorCedula(cedula: string) {
             data.push({
                 id: ultimo.id,
                 cedulaRepresentante: ultimo.cedulaRepresentante,
+                telefonoRepresentante: mapaTelefonos.get(String(ultimo.cedulaRepresentante).replace(/\D/g, '').trim()) || '',
                 edadRepresentante: ultimo.edadRepresentante,
                 parentesco: ultimo.parentesco,
                 grupoEtnico: ultimo.grupoEtnico,
@@ -354,11 +433,15 @@ export async function buscarHistorialMelPorCedula(cedula: string) {
 
         if (!ultimo) return { success: true, data: null };
 
+        const mapaTelefonos = await obtenerMapaTelefonosSaman();
+        const cedLimpia = String(ultimo.cedula).replace(/\D/g, '').trim();
+
         return {
             success: true,
             data: {
                 id: ultimo.id,
                 cedula: ultimo.cedula,
+                telefono: mapaTelefonos.get(cedLimpia) || '',
                 nombre: ultimo.nombre,
                 apellido: ultimo.apellido,
                 fechaNacimiento: ultimo.fechaNacimiento,
@@ -470,6 +553,10 @@ export async function registrarSamanNino(datos: any) {
             },
         });
 
+        if (datos.telefonoRepresentante) {
+            await guardarTelefonoPorCedula(datos.cedulaRepresentante, datos.telefonoRepresentante);
+        }
+
         revalidatePath('/dashboard/saman');
         return { success: true, data: nuevo };
     } catch (error) {
@@ -526,6 +613,10 @@ export async function registrarSamanEmbarazada(datos: any) {
                 observaciones: datos.observaciones ? String(datos.observaciones).toUpperCase() : null,
             },
         });
+
+        if (datos.telefono) {
+            await guardarTelefonoPorCedula(datos.cedula, datos.telefono);
+        }
 
         revalidatePath('/dashboard/saman');
         return { success: true, data: nuevo };
@@ -626,6 +717,10 @@ export async function actualizarSamanNino(id: number, datos: any) {
             },
         });
 
+        if (datos.telefonoRepresentante !== undefined) {
+            await guardarTelefonoPorCedula(datos.cedulaRepresentante, datos.telefonoRepresentante);
+        }
+
         revalidatePath('/dashboard/saman');
         return { success: true, data: actualizado };
     } catch (error) {
@@ -682,6 +777,10 @@ export async function actualizarSamanEmbarazada(id: number, datos: any) {
                 observaciones: datos.observaciones ? String(datos.observaciones).toUpperCase() : null,
             },
         });
+
+        if (datos.telefono !== undefined) {
+            await guardarTelefonoPorCedula(datos.cedula, datos.telefono);
+        }
 
         revalidatePath('/dashboard/saman');
         return { success: true, data: actualizado };

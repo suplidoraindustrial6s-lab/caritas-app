@@ -99,6 +99,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
     // ==========================================
     const [ninoForm, setNinoForm] = useState({
         cedulaRepresentante: '',
+        telefonoRepresentante: '',
         edadRepresentante: 'Entre 18 - 49 años',
         parentesco: 'MADRE',
         grupoEtnico: 'Mestizo',
@@ -149,6 +150,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
     // ==========================================
     const [melForm, setMelForm] = useState({
         cedula: '',
+        telefono: '',
         nombre: '',
         apellido: '',
         fechaNacimiento: '',
@@ -189,6 +191,13 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
             if (res.success && res.data && res.data.length > 0) {
                 setHistorialNinos(res.data);
                 setNinoHistoricoSeleccionado(res.data[0]);
+                const telGuardado = res.data[0].telefonoRepresentante || '';
+                if (telGuardado) {
+                    setNinoForm((prev) => ({
+                        ...prev,
+                        telefonoRepresentante: prev.telefonoRepresentante || telGuardado,
+                    }));
+                }
             } else {
                 setHistorialNinos([]);
                 setNinoHistoricoSeleccionado(null);
@@ -212,6 +221,13 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
             const res = await buscarHistorialMelPorCedula(cedula);
             if (res.success && res.data) {
                 setHistorialMel(res.data);
+                const telGuardado = res.data.telefono || '';
+                if (telGuardado) {
+                    setMelForm((prev) => ({
+                        ...prev,
+                        telefono: prev.telefono || telGuardado,
+                    }));
+                }
             } else {
                 setHistorialMel(null);
             }
@@ -299,6 +315,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
 
         setNinoForm((prev) => ({
             ...prev,
+            telefonoRepresentante: hist.telefonoRepresentante || prev.telefonoRepresentante,
             edadRepresentante: hist.edadRepresentante || prev.edadRepresentante,
             parentesco: hist.parentesco || prev.parentesco,
             grupoEtnico: hist.grupoEtnico || prev.grupoEtnico,
@@ -326,6 +343,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
             : '';
         setMelForm((prev) => ({
             ...prev,
+            telefono: hist.telefono || prev.telefono,
             nombre: hist.nombre || '',
             apellido: hist.apellido || '',
             fechaNacimiento: fechaNacStr,
@@ -352,6 +370,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
 
         setNinoForm({
             cedulaRepresentante: n.cedulaRepresentante || '',
+            telefonoRepresentante: n.telefonoRepresentante || '',
             edadRepresentante: n.edadRepresentante || 'Entre 18 - 49 años',
             parentesco: n.parentesco || 'MADRE',
             grupoEtnico: n.grupoEtnico || 'Mestizo',
@@ -404,6 +423,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
         setEditandoNinoId(null);
         setNinoForm({
             cedulaRepresentante: '',
+            telefonoRepresentante: '',
             edadRepresentante: 'Entre 18 - 49 años',
             parentesco: 'MADRE',
             grupoEtnico: 'Mestizo',
@@ -454,6 +474,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
             : '';
         setMelForm({
             cedula: m.cedula || '',
+            telefono: m.telefono || '',
             nombre: m.nombre || '',
             apellido: m.apellido || '',
             fechaNacimiento: fechaNacStr,
@@ -487,6 +508,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
         setEditandoMelId(null);
         setMelForm({
             cedula: '',
+            telefono: '',
             nombre: '',
             apellido: '',
             fechaNacimiento: '',
@@ -1237,6 +1259,20 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                 </div>
 
                                 <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                                        Teléfono Representante
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        inputMode="tel"
+                                        placeholder="Ej: 0412-1234567"
+                                        value={ninoForm.telefonoRepresentante}
+                                        onChange={(e) => setNinoForm({ ...ninoForm, telefonoRepresentante: e.target.value })}
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-semibold text-slate-800"
+                                    />
+                                </div>
+
+                                <div>
                                     <label className="block text-xs font-bold text-slate-700 mb-1">Grupo Étnico</label>
                                     <select
                                         value={ninoForm.grupoEtnico}
@@ -1918,6 +1954,11 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                             <td className="py-3 px-4 font-bold text-slate-400">{idx + 1}</td>
                                             <td className="py-3 px-4">
                                                 <div className="font-bold text-slate-800">{n.cedulaRepresentante}</div>
+                                                {n.telefonoRepresentante && (
+                                                    <div className="text-[10px] font-semibold text-emerald-700">
+                                                        📞 {n.telefonoRepresentante}
+                                                    </div>
+                                                )}
                                                 <div className="text-[10px] text-slate-500">
                                                     {n.parentesco} • <span className="font-semibold text-primary">{n.tipoIngreso}</span> (Ctrl: {n.nroControl ?? 0})
                                                 </div>
@@ -2056,6 +2097,9 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                         <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
                                             <div className="truncate pr-2">
                                                 <span className="font-semibold text-slate-700">C.I. Rep:</span> {n.cedulaRepresentante} ({n.parentesco})
+                                                {n.telefonoRepresentante && (
+                                                    <span className="font-semibold text-emerald-700"> • 📞 {n.telefonoRepresentante}</span>
+                                                )}
                                                 <span className="font-semibold text-primary"> • {n.tipoIngreso}</span> (Ctrl: {n.nroControl ?? 0})
                                                 {n.tratamientoProtocolo && ` • ${n.tratamientoProtocolo}`}
                                             </div>
@@ -2227,6 +2271,19 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                             ? 'border-pink-400 ring-4 ring-pink-300/60 bg-pink-50/40 text-slate-900 animate-pulse'
                                             : 'border-slate-200 bg-slate-50/50 text-slate-800'
                                     }`}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                    Teléfono de Contacto
+                                </label>
+                                <input
+                                    type="tel"
+                                    inputMode="tel"
+                                    placeholder="Ej: 0412-1234567"
+                                    value={melForm.telefono}
+                                    onChange={(e) => setMelForm({ ...melForm, telefono: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-semibold text-slate-800"
                                 />
                             </div>
                             <div>
@@ -2518,7 +2575,14 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                     {melFiltradas.map((m: any, idx: number) => (
                                         <tr key={m.id} className={`hover:bg-slate-50/80 transition-colors ${editandoMelId === m.id ? 'bg-pink-50/50' : ''}`}>
                                             <td className="py-3 px-4 font-bold text-slate-400">{idx + 1}</td>
-                                            <td className="py-3 px-4 font-bold text-slate-800">{m.cedula}</td>
+                                            <td className="py-3 px-4">
+                                                <div className="font-bold text-slate-800">{m.cedula}</div>
+                                                {m.telefono && (
+                                                    <div className="text-[10px] font-semibold text-emerald-700">
+                                                        📞 {m.telefono}
+                                                    </div>
+                                                )}
+                                            </td>
                                             <td className="py-3 px-4">
                                                 <div className="font-bold text-slate-900">{m.nombre} {m.apellido}</div>
                                                 <div className="text-[10px] text-slate-500">
@@ -2603,7 +2667,7 @@ export default function SamanManager({ jornadas, jornadaActiva, indicadores }: S
                                                         {m.nombre} {m.apellido}
                                                     </h4>
                                                     <p className="text-[11px] text-slate-500 mt-0.5">
-                                                        C.I. {m.cedula} • <span className="font-semibold text-pink-700">{m.estadoEmbarazoLactancia}</span>
+                                                        C.I. {m.cedula} {m.telefono ? `• 📞 ${m.telefono}` : ''} • <span className="font-semibold text-pink-700">{m.estadoEmbarazoLactancia}</span>
                                                         {m.semanaGestacion && ` (${m.semanaGestacion} sem)`}
                                                     </p>
                                                 </div>
