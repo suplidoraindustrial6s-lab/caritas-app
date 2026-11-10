@@ -329,15 +329,22 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
         );
     });
 
-    const pacientesSinVincularFiltrados = pacientesSaman.filter((p) => {
-        if (p.vinculado) return false;
-        if (!busquedaIndividual.trim()) return true;
-        const q = busquedaIndividual.toLowerCase();
-        return (
-            p.cedula.includes(q) ||
-            p.nombresPacientes.join(' ').toLowerCase().includes(q)
-        );
-    });
+    const pacientesSinVincularFiltrados = pacientesSaman
+        .filter((p) => {
+            if (p.vinculado) return false;
+            if (!busquedaIndividual.trim()) return true;
+            const q = busquedaIndividual.toLowerCase();
+            return (
+                p.cedula.includes(q) ||
+                (p.telefono && p.telefono.includes(q)) ||
+                p.nombresPacientes.join(' ').toLowerCase().includes(q)
+            );
+        })
+        .sort((a, b) => {
+            const aTel = a.telefono ? 1 : 0;
+            const bTel = b.telefono ? 1 : 0;
+            return bTel - aTel;
+        });
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-2 sm:p-3 overflow-y-auto">
@@ -764,13 +771,25 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                         {/* ========================================================================= */}
                         {modoEnvio === 'INDIVIDUAL' && (
                             <div className="space-y-3">
-                                <input
-                                    type="text"
-                                    value={busquedaIndividual}
-                                    onChange={(e) => setBusquedaIndividual(e.target.value)}
-                                    placeholder="🔍 Buscar representante, niño/a, MEL o cédula..."
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                                />
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        value={busquedaIndividual}
+                                        onChange={(e) => setBusquedaIndividual(e.target.value)}
+                                        placeholder="🔍 Buscar representante, niño/a, MEL, cédula o teléfono..."
+                                        className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                                    />
+                                    {busquedaIndividual.trim() && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setBusquedaIndividual('')}
+                                            className="px-3 py-2.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 text-xs font-extrabold flex items-center gap-1 cursor-pointer flex-none"
+                                        >
+                                            <X className="w-3.5 h-3.5" />
+                                            <span>Mostrar Todos ({pacientesSaman.length})</span>
+                                        </button>
+                                    )}
+                                </div>
 
                                 {/* Contactos de Telegram ya conectados */}
                                 <div className="space-y-2">
