@@ -262,3 +262,23 @@ model RegistroSamanEmbarazadas {
   @@index([cedula])
   @@index([jornadaId])
 }
+
+
+// Teléfono por cédula de representante o MEL (Programa SAMÁN)
+model TelefonoPacienteSaman {
+  cedula    String  @id
+  telefono  String  @default("")
+  updatedAt String?
+}
+
+// Contactos y Grupos de Telegram (Programa SAMÁN)
+model TelegramContactoSaman {
+  chatId         String  @id
+  tipo           String  @default("INDIVIDUAL")
+  nombreTelegram String  @default("")
+  username       String?
+  cedula         String?
+  categoria      String  @default("REPRESENTANTE")
+  estatus        String  @default("ACTIVO")
+  updatedAt      String?
+}
