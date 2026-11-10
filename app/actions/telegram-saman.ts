@@ -17,6 +17,8 @@ export interface ContactoTelegramSaman {
     categoria: 'REPRESENTANTE' | 'MEL' | 'VOLUNTARIO' | 'COHORTE_ACTIVA' | 'GRUPO_VOLUNTARIOS';
     estatus: 'ACTIVO' | 'DADO_DE_ALTA';
     updatedAt: string;
+    miembrosCount?: number;
+    inviteLink?: string | null;
     // Datos cruzados automáticamente desde SAMÁN
     pacienteInfo?: {
         nombresPacientes: string[];
@@ -264,37 +266,74 @@ export async function obtenerDirectorioTelegramSaman() {
 
         const mapaTelefonos = await obtenerMapaTelefonosSaman();
 
-        // Enriquecer contactos de Telegram con la información clínica de SAMÁN
-        const contactos: ContactoTelegramSaman[] = contactosRaw.map((c) => {
-            const cedLimpia = c.cedula ? String(c.cedula).replace(/\D/g, '').trim() : '';
-            const infoSaman = cedLimpia ? mapaPacientesPorCedula.get(cedLimpia) : undefined;
-            const telSaman = cedLimpia ? mapaTelefonos.get(cedLimpia) || '' : '';
+        // Enriquecer contactos de Telegram con la información clínica de SAMÁN y conteo de miembros/link de grupos
+        const contactos: ContactoTelegramSaman[] = await Promise.all(
+            contactosRaw.map(async (c) => {
+                const cedLimpia = c.cedula ? String(c.cedula).replace(/\D/g, '').trim() : '';
+                const infoSaman = cedLimpia ? mapaPacientesPorCedula.get(cedLimpia) : undefined;
+                const telSaman = cedLimpia ? mapaTelefonos.get(cedLimpia) || '' : '';
+                const esGrupo = c.tipo === 'GRUPO';
 
-            // Si el paciente ya tuvo SALIDA DE VIVERO en todos sus registros, se considera dado de alta
-            const estatusEfectivo =
-                c.estatus === 'DADO_DE_ALTA' || infoSaman?.dadoDeAltaAutomatico
-                    ? 'DADO_DE_ALTA'
-                    : 'ACTIVO';
+                let miembrosCount: number | undefined = undefined;
+                let inviteLink: string | null = null;
 
-            return {
-                chatId: String(c.chatId),
-                tipo: c.tipo === 'GRUPO' ? 'GRUPO' : 'INDIVIDUAL',
-                nombreTelegram: c.nombreTelegram || 'Contacto Telegram',
-                username: c.username || null,
-                cedula: cedLimpia || null,
-                categoria: c.categoria || (infoSaman?.esMel ? 'MEL' : 'REPRESENTANTE'),
-                estatus: estatusEfectivo,
-                updatedAt: c.updatedAt || new Date().toISOString(),
-                pacienteInfo: infoSaman
-                    ? {
-                          nombresPacientes: infoSaman.nombresPacientes,
-                          ultimoTipoIngreso: infoSaman.ultimoTipoIngreso,
-                          dadoDeAltaAutomatico: infoSaman.dadoDeAltaAutomatico,
-                          telefono: telSaman,
-                      }
-                    : undefined,
-            };
-        });
+                if (esGrupo) {
+                    try {
+                        const [countRes, chatRes] = await Promise.all([
+                            fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getChatMemberCount?chat_id=${c.chatId}`, {
+                                cache: 'no-store',
+                            }).then((r) => r.json()).catch(() => null),
+                            fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getChat?chat_id=${c.chatId}`, {
+                                cache: 'no-store',
+                            }).then((r) => r.json()).catch(() => null),
+                        ]);
+                        if (countRes?.ok && typeof countRes.result === 'number') {
+                            miembrosCount = countRes.result;
+                        }
+                        if (chatRes?.ok && chatRes.result?.invite_link) {
+                            inviteLink = chatRes.result.invite_link;
+                        } else {
+                            const expRes = await fetch(
+                                `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/exportChatInviteLink?chat_id=${c.chatId}`,
+                                { cache: 'no-store' }
+                            ).then((r) => r.json()).catch(() => null);
+                            if (expRes?.ok && expRes.result) {
+                                inviteLink = expRes.result;
+                            }
+                        }
+                    } catch {
+                        // Ignorar si el bot no es admin en algún grupo antiguo
+                    }
+                }
+
+                // Si el paciente ya tuvo SALIDA DE VIVERO en todos sus registros, se considera dado de alta
+                const estatusEfectivo =
+                    c.estatus === 'DADO_DE_ALTA' || infoSaman?.dadoDeAltaAutomatico
+                        ? 'DADO_DE_ALTA'
+                        : 'ACTIVO';
+
+                return {
+                    chatId: String(c.chatId),
+                    tipo: esGrupo ? 'GRUPO' : 'INDIVIDUAL',
+                    nombreTelegram: c.nombreTelegram || 'Contacto Telegram',
+                    username: c.username || null,
+                    cedula: cedLimpia || null,
+                    categoria: c.categoria || (infoSaman?.esMel ? 'MEL' : 'REPRESENTANTE'),
+                    estatus: estatusEfectivo,
+                    updatedAt: c.updatedAt || new Date().toISOString(),
+                    miembrosCount,
+                    inviteLink,
+                    pacienteInfo: infoSaman
+                        ? {
+                              nombresPacientes: infoSaman.nombresPacientes,
+                              ultimoTipoIngreso: infoSaman.ultimoTipoIngreso,
+                              dadoDeAltaAutomatico: infoSaman.dadoDeAltaAutomatico,
+                              telefono: telSaman,
+                          }
+                        : undefined,
+                };
+            })
+        );
 
         // Lista de pacientes de SAMÁN para facilitar vinculación por cédula
         const pacientesSaman = Array.from(mapaPacientesPorCedula.values()).map((p) => {

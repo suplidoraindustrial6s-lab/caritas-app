@@ -53,6 +53,7 @@ export default function SamanTelegramModal({
     const [botUsername, setBotUsername] = useState('caritasPQLamilagrosa_bot');
     const [contactos, setContactos] = useState<ContactoTelegramSaman[]>([]);
     const [pacientesSaman, setPacientesSaman] = useState<any[]>([]);
+    const [qrModalGrupo, setQrModalGrupo] = useState<{ nombre: string; link: string } | null>(null);
 
     // Modalidades: 'GRUPOS' | 'MONITOREO_ACTIVOS' | 'INDIVIDUAL'
     const [modoEnvio, setModoEnvio] = useState<'GRUPOS' | 'MONITOREO_ACTIVOS' | 'INDIVIDUAL'>('GRUPOS');
@@ -547,8 +548,13 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                                             className="w-4 h-4 rounded text-blue-600 disabled:opacity-40"
                                                         />
                                                         <div className="truncate">
-                                                            <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                                                            <div className="text-xs font-bold text-slate-900 flex flex-wrap items-center gap-1.5">
                                                                 <span className="truncate">{g.nombreTelegram}</span>
+                                                                {typeof g.miembrosCount === 'number' && (
+                                                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-extrabold">
+                                                                        👥 {g.miembrosCount} miembros
+                                                                    </span>
+                                                                )}
                                                                 <span
                                                                     className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
                                                                         estaActivo
@@ -559,13 +565,53 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                                                     {estaActivo ? '🟢 Grupo Activo' : '🚫 Grupo Dado de Alta (No enviar)'}
                                                                 </span>
                                                             </div>
-                                                            <div className="text-[10px] text-slate-500">
-                                                                ID: {g.chatId}
+                                                            <div className="text-[10px] text-slate-500 flex flex-wrap items-center gap-2 mt-0.5">
+                                                                <span>ID: {g.chatId}</span>
+                                                                {g.inviteLink && (
+                                                                    <span className="text-blue-700 font-semibold truncate">
+                                                                        • Link: {g.inviteLink}
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </label>
 
-                                                    <div className="flex items-center gap-1.5 flex-none">
+                                                    <div className="flex flex-wrap items-center gap-1.5 flex-none">
+                                                        {g.inviteLink && (
+                                                            <>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => copiarTexto(g.inviteLink!, `inv-${g.chatId}`)}
+                                                                    className="px-2.5 py-1 rounded-xl text-[10px] font-bold bg-blue-600 hover:bg-blue-700 text-white transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                                                                    title="Copiar enlace de invitación para pasárselo a las madres o voluntarios sin agendarlos"
+                                                                >
+                                                                    {copiadoId === `inv-${g.chatId}` ? (
+                                                                        <>
+                                                                            <Check className="w-3 h-3" />
+                                                                            <span>Link Copiado</span>
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <Copy className="w-3 h-3" />
+                                                                            <span>Copiar Link Grupo</span>
+                                                                        </>
+                                                                    )}
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        setQrModalGrupo({
+                                                                            nombre: g.nombreTelegram,
+                                                                            link: g.inviteLink!,
+                                                                        })
+                                                                    }
+                                                                    className="px-2.5 py-1 rounded-xl text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 transition-all cursor-pointer"
+                                                                    title="Mostrar Código QR en pantalla para que las madres lo escaneen en la jornada y entren al grupo solas"
+                                                                >
+                                                                    📱 QR Jornada
+                                                                </button>
+                                                            </>
+                                                        )}
                                                         <button
                                                             type="button"
                                                             onClick={() => handleCambiarEstatus(g.chatId, g.estatus)}
@@ -580,7 +626,7 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                                                     : 'Reactivar este grupo'
                                                             }
                                                         >
-                                                            {estaActivo ? 'Dar de Alta / Cerrar Grupo' : 'Reactivar Grupo'}
+                                                            {estaActivo ? 'Dar de Alta / Cerrar' : 'Reactivar'}
                                                         </button>
                                                         <button
                                                             type="button"
@@ -812,7 +858,11 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                                 ? digitosTel
                                                 : '58' + digitosTel
                                             : '';
-                                        const mensajeInvitacionPlano = `¡Hola! 💛 Te escribimos de Cáritas Parroquial La Milagrosa (Programa SAMÁN). Toca este enlace y presiona "INICIAR" en Telegram para recibir los recordatorios de tu próxima jornada de monitoreo nutricional: ${p.linkVinculacion}`;
+                                        const grupoActivoConLink = gruposTelegram.find((g) => g.estatus === 'ACTIVO' && g.inviteLink);
+                                        const textoGrupoExtra = grupoActivoConLink
+                                            ? `\n\n👥 También puedes unirte directamente a nuestro grupo "${grupoActivoConLink.nombreTelegram}" tocando aquí: ${grupoActivoConLink.inviteLink}`
+                                            : '';
+                                        const mensajeInvitacionPlano = `¡Hola! 💛 Te escribimos de Cáritas Parroquial La Milagrosa (Programa SAMÁN). Toca este enlace y presiona "INICIAR" en Telegram para recibir los recordatorios de tu próxima jornada de monitoreo nutricional: ${p.linkVinculacion}${textoGrupoExtra}`;
                                         const textoInvitacionWa = encodeURIComponent(mensajeInvitacionPlano);
                                         return (
                                             <div
@@ -999,12 +1049,66 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                 <span>
                                     {enviando
                                         ? 'Enviando por Telegram...'
-                                        : `Enviar Recordatorio a ${seleccionadosIds.length} Destinatario(s) / Grupo(s)`}
+                                        : modoEnvio === 'GRUPOS'
+                                        ? `Enviar Recordatorio a ${seleccionadosIds.length} Grupo(s) Seleccionado(s)`
+                                        : `Enviar Recordatorio a ${seleccionadosIds.length} Destinatario(s)`}
                                 </span>
                             </button>
                         </div>
                     </div>
                 </div>
+
+                {/* SUB-MODAL DE CÓDIGO QR DEL GRUPO PARA ESCANEAR EN LA JORNADA */}
+                {qrModalGrupo && (
+                    <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4">
+                        <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center space-y-4 animate-in zoom-in-95 duration-200">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <h4 className="text-sm font-extrabold text-slate-900 truncate">
+                                    📱 QR de Ingreso al Grupo
+                                </h4>
+                                <button
+                                    type="button"
+                                    onClick={() => setQrModalGrupo(null)}
+                                    className="text-slate-400 hover:text-slate-700 font-bold cursor-pointer"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-xs font-bold text-blue-700">{qrModalGrupo.nombre}</p>
+                                <p className="text-[11px] text-slate-500">
+                                    La madre o voluntario solo debe apuntar la cámara de su teléfono a este código para unirse al grupo sin tener que agendar su número:
+                                </p>
+                            </div>
+                            <div className="bg-white p-3 rounded-2xl border-2 border-blue-100 inline-block shadow-sm">
+                                <img
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrModalGrupo.link)}`}
+                                    alt="Código QR del Grupo de Telegram"
+                                    className="w-52 h-52 mx-auto rounded-lg"
+                                />
+                            </div>
+                            <div className="text-[11px] font-mono bg-slate-50 p-2 rounded-xl border border-slate-200 text-slate-700 break-all">
+                                {qrModalGrupo.link}
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => copiarTexto(qrModalGrupo.link, 'qr-copy')}
+                                    className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer"
+                                >
+                                    {copiadoId === 'qr-copy' ? '¡Enlace Copiado!' : 'Copiar Enlace'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setQrModalGrupo(null)}
+                                    className="py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
+                                >
+                                    Cerrar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
