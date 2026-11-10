@@ -70,8 +70,21 @@ export default function SamanTelegramModal({
         return d.toISOString().slice(0, 10);
     }, []);
 
+    // Determinar horario y modalidad según el día de la semana de la fecha seleccionada:
+    // - Sábados (6): Diagnóstico Inicial de 9:00 AM a 12:00 M
+    // - Días de semana (Martes/Jueves/otros): Monitoreo de 3:00 PM a 5:00 PM
+    const obtenerHorarioYTipoPorFecha = (isoDate: string) => {
+        if (!isoDate) return { horaSugerida: '3:00 PM a 5:00 PM', esSabado: false };
+        const fechaObj = new Date(isoDate + 'T12:00:00');
+        const dia = fechaObj.getDay(); // 0=Dom, 1=Lun, 2=Mar, 3=Mié, 4=Jue, 5=Vie, 6=Sáb
+        if (dia === 6) {
+            return { horaSugerida: '9:00 AM a 12:00 M', esSabado: true };
+        }
+        return { horaSugerida: '3:00 PM a 5:00 PM', esSabado: false };
+    };
+
     const [fechaProxima, setFechaProxima] = useState(mananaStr);
-    const [horaProxima, setHoraProxima] = useState('8:00 AM a 12:00 PM');
+    const [horaProxima, setHoraProxima] = useState(() => obtenerHorarioYTipoPorFecha(mananaStr).horaSugerida);
     const [lugarProximo, setLugarProximo] = useState(comunidadDefault);
     const [tipoPlantilla, setTipoPlantilla] = useState<'REPRESENTANTES' | 'VOLUNTARIOS'>('REPRESENTANTES');
     const [mensajeTexto, setMensajeTexto] = useState('');
@@ -93,7 +106,7 @@ export default function SamanTelegramModal({
 
     // Formatear día de la semana y fecha legible en español
     const obtenerFechaFormateada = (isoDate: string) => {
-        if (!isoDate) return { diaSemana: 'Viernes', fechaLarga: 'Próxima Jornada' };
+        if (!isoDate) return { diaSemana: 'Martes', fechaLarga: 'Próxima Jornada', esSabado: false };
         const fechaObj = new Date(isoDate + 'T12:00:00');
         const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
         const meses = [
@@ -102,24 +115,31 @@ export default function SamanTelegramModal({
         ];
         const diaSemana = dias[fechaObj.getDay()];
         const fechaLarga = `${fechaObj.getDate()} de ${meses[fechaObj.getMonth()]} de ${fechaObj.getFullYear()}`;
-        return { diaSemana, fechaLarga };
+        const esSabado = fechaObj.getDay() === 6;
+        return { diaSemana, fechaLarga, esSabado };
     };
 
-    // Construir mensaje según plantilla oficial (sin pedir sobres vacíos)
+    // Construir mensaje según plantilla oficial (sin pedir sobres vacíos) y adaptando si es Monitoreo (Martes/Jueves) o Diagnóstico Inicial (Sábado)
     const construirPlantilla = (
         tipo: 'REPRESENTANTES' | 'VOLUNTARIOS',
         fechaIso: string,
         hora: string,
         lugar: string
     ) => {
-        const { diaSemana, fechaLarga } = obtenerFechaFormateada(fechaIso);
+        const { diaSemana, fechaLarga, esSabado } = obtenerFechaFormateada(fechaIso);
+        const descripcionJornadaRep = esSabado
+            ? 'nuestra jornada de diagnóstico inicial y evaluación nutricional del Programa SAMÁN'
+            : 'nuestra jornada de monitoreo y control nutricional del Programa SAMÁN';
+        const descripcionJornadaVol = esSabado
+            ? 'nuestra jornada de diagnóstico inicial y captación nutricional del Programa SAMÁN'
+            : 'nuestra jornada de monitoreo y evaluación nutricional del Programa SAMÁN';
 
         if (tipo === 'REPRESENTANTES') {
             return `📢 RECORDATORIO DE JORNADA — PROGRAMA SAMÁN
 ⛪ Cáritas Parroquial La Milagrosa (El Limón)
 
 ¡Saludos cordiales, estimadas madres, representantes y beneficiarias! 💛
-Les recordamos que MAÑANA realizaremos nuestra jornada de atención y monitoreo nutricional del Programa SAMÁN:
+Les recordamos que realizaremos ${descripcionJornadaRep}:
 
 🗓️ Día: ${diaSemana}
 📅 Fecha: ${fechaLarga}
@@ -131,7 +151,7 @@ Les recordamos que MAÑANA realizaremos nuestra jornada de atención y monitoreo
 • Mujeres Embarazadas y Madres Lactantes (MEL).
 
 📋 Recomendaciones importantes:
-1️⃣ Asistir puntualmente con el niño o niña para su control de medida de brazo (CBI), talla y peso.
+1️⃣ Asistir puntualmente con el niño o niña para su evaluación de medida de brazo (CBI), talla y peso.
 2️⃣ Presentar la Cédula de Identidad de la madre o representante.
 
 ¡Contamos con su asistencia por la salud y el bienestar de nuestros niños! 🙏✨`;
@@ -140,7 +160,7 @@ Les recordamos que MAÑANA realizaremos nuestra jornada de atención y monitoreo
 ⛪ Cáritas Parroquial La Milagrosa (El Limón)
 
 ¡Bendecido día, querido equipo de voluntarios! 🙌
-Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación nutricional del Programa SAMÁN:
+Les recordamos que tendremos ${descripcionJornadaVol}:
 
 🗓️ Día: ${diaSemana}
 📅 Fecha: ${fechaLarga}
@@ -152,6 +172,13 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
 
 ¡Gracias por su entrega, servicio y compromiso con nuestra comunidad! ❤️✝️`;
         }
+    };
+
+    // Actualizar automáticamente la hora sugerida cuando cambia la fecha (Sábado = 9:00 AM a 12:00 M | Semana/Mar-Jue = 3:00 PM a 5:00 PM)
+    const handleCambiarFechaProxima = (nuevaFecha: string) => {
+        setFechaProxima(nuevaFecha);
+        const { horaSugerida } = obtenerHorarioYTipoPorFecha(nuevaFecha);
+        setHoraProxima(horaSugerida);
     };
 
     // Actualizar mensaje cuando cambian fecha, hora, lugar o tipo de plantilla
@@ -1066,7 +1093,7 @@ Les recordamos que MAÑANA tendremos nuestra jornada de monitoreo y evaluación 
                                     <input
                                         type="date"
                                         value={fechaProxima}
-                                        onChange={(e) => setFechaProxima(e.target.value)}
+                                        onChange={(e) => handleCambiarFechaProxima(e.target.value)}
                                         className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800"
                                     />
                                 </div>
